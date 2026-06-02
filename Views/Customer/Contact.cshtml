@@ -1,0 +1,69 @@
+@model MGold.Controllers.CustomerContactPageViewModel
+@{
+    ViewData["Title"] = "Iletisim";
+    ViewData["PageDescription"] = "Destek ekibiyle iletisime gecin ve son mesaj gecmisinizi takip edin.";
+}
+
+@section Styles {
+    <style>
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr .9fr;
+            gap: 18px;
+        }
+        .panel { padding: 22px; }
+        .form-grid { display: grid; gap: 12px; }
+        .message-card {
+            padding: 16px 18px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(98,67,25,0.08);
+        }
+        .message-card + .message-card { margin-top: 12px; }
+        @@media (max-width: 980px) {
+            .contact-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+}
+
+<div class="contact-grid">
+    <section class="surface panel">
+        <h2 class="section-title">Yeni Mesaj</h2>
+        <p class="section-copy">Uygulama icindeki iletisim akisi artik ayri moduldur; destek talebinizi buradan iletebilirsiniz.</p>
+        <form method="post" class="form-grid" style="margin-top:16px;">
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(false)
+            <input asp-for="Form.Name" placeholder="Ad Soyad" />
+            <input asp-for="Form.Email" placeholder="E-posta" />
+            <input asp-for="Form.Phone" placeholder="Telefon" />
+            <input asp-for="Form.Subject" placeholder="Konu" />
+            <textarea asp-for="Form.Message" rows="6" placeholder="Mesajiniz"></textarea>
+            <button type="submit" class="btn btn-primary">Mesaji Gonder</button>
+        </form>
+    </section>
+
+    <section class="surface panel">
+        <h2 class="section-title">Son Mesajlarim</h2>
+        <p class="section-copy">Gonderdiginiz son iletiler ve cozum durumu.</p>
+        <div style="margin-top:16px;">
+            @if (!Model.RecentMessages.Any())
+            {
+                <div class="empty-state">Daha once gonderilmis mesaj bulunmuyor.</div>
+            }
+            else
+            {
+                @foreach (var item in Model.RecentMessages)
+                {
+                    <article class="message-card">
+                        <div class="cluster">
+                            <strong>@item.Subject</strong>
+                            <span class="badge">@(item.IsResolved ? "Cozuldu" : "Acik")</span>
+                        </div>
+                        <div class="text-muted" style="margin-top:8px;">@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                        <div style="margin-top:10px;">@item.Message</div>
+                    </article>
+                }
+            }
+        </div>
+    </section>
+</div>

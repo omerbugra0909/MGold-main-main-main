@@ -1,0 +1,53 @@
+@model MGold.Controllers.CustomerPanelViewModel
+@{
+    ViewData["Title"] = "Profil";
+    ViewData["PageDescription"] = "Hesap bilgileriniz ve musteri ozetiniz sade bir duzende sunulur.";
+}
+
+@section Styles {
+    <style>
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 360px minmax(0, 1fr);
+            gap: 18px;
+        }
+        .card { padding: 22px; }
+        .meta {
+            display: grid;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .meta div {
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(98,67,25,0.08);
+        }
+        @@media (max-width: 960px) {
+            .profile-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+}
+
+<div class="profile-grid">
+    <section class="surface card">
+        <h2 class="section-title">@Model.FullName</h2>
+        <div class="text-muted">@Model.Username</div>
+        <div class="meta">
+            <div><strong>E-posta</strong><div class="text-muted">@Model.Email</div></div>
+            <div><strong>Telefon</strong><div class="text-muted">@Model.Phone</div></div>
+            <div><strong>Rol</strong><div class="badge">Musteri</div></div>
+        </div>
+    </section>
+
+    <section class="surface card">
+        <h2 class="section-title">Hesap Durumu</h2>
+        <p class="section-copy">Bu alan tamamen musteri tarafina ayrildi. Yonetimsel CRUD veya admin modullerine buradan erisim yoktur.</p>
+        <div class="meta">
+            <div><strong>Toplam Siparis</strong><div class="text-muted">@Model.OrderCount</div></div>
+            <div><strong>Favoriler</strong><div class="text-muted">@Model.FavoriteCount</div></div>
+            <div><strong>Toplam Harcama</strong><div class="text-muted">@Model.TotalSpent.ToString("N2") TL</div></div>
+            <div><strong>Destek Talepleri</strong><div class="text-muted">@Model.UnresolvedContactCount aktif mesaj</div></div>
+        </div>
+    </section>
+</div>

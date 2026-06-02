@@ -1,0 +1,77 @@
+@model IReadOnlyList<MGold.Domain.Entities.ProductReview>
+@{
+    var panelBase = User.IsInRole("SystemAdmin") ? "/admin" : "/owner";
+    ViewData["Title"] = "Yorumlar";
+    ViewData["PageDescription"] = "Musteri yorumlarini ve puanlarini tek akista inceleyip moderasyon uygula.";
+}
+
+@section Styles {
+    <style>
+        .review-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+        .review-card {
+            padding: 22px;
+        }
+        .review-card h2 {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 24px;
+        }
+        .review-meta {
+            margin: 10px 0 0;
+            color: var(--muted);
+        }
+        .review-comment {
+            margin: 16px 0;
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(98, 67, 25, 0.08);
+        }
+        .moderation-form {
+            display: grid;
+            gap: 10px;
+        }
+        @@media (max-width: 960px) {
+            .review-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+}
+
+@if (!Model.Any())
+{
+    <section class="surface surface-inner">
+        <div class="empty-state">Henuz yorum kaydi yok.</div>
+    </section>
+}
+else
+{
+    <div class="review-grid">
+        @foreach (var review in Model)
+        {
+            <section class="surface review-card">
+                <h2>@review.Product.Name</h2>
+                <div class="review-meta">@(review.Customer?.Name ?? "Misafir") • @review.Rating / 5 • @review.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                <div class="review-comment">@review.Comment</div>
+                <div class="cluster" style="margin-bottom:14px;">
+                    <span class="badge">@review.Status</span>
+                    @if (!string.IsNullOrWhiteSpace(review.AdminReply))
+                    {
+                        <span class="text-muted">Mevcut admin notu var</span>
+                    }
+                </div>
+
+                <form method="post" action="@($"{panelBase}/reviews/moderate")" class="moderation-form">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@review.Id" />
+                    <select name="status" asp-items="Html.GetEnumSelectList<MGold.Domain.Enums.ReviewStatus>()"></select>
+                    <textarea name="adminReply" rows="4" placeholder="Yonetici notu">@review.AdminReply</textarea>
+                    <button type="submit" class="btn btn-primary">Yorumu guncelle</button>
+                </form>
+            </section>
+        }
+    </div>
+}

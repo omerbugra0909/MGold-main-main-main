@@ -1,0 +1,64 @@
+@model MGold.Controllers.VerifyPendingViewModel
+@{
+    ViewData["Title"] = "E-posta Dogrulama";
+    ViewData["PageDescription"] = "Hesabinizi kullanmadan once e-posta adresinizi dogrulayin.";
+    var resendValue = string.IsNullOrWhiteSpace(Model.EmailOrUsername) ? Model.Email : Model.EmailOrUsername;
+}
+
+@section Styles {
+    <style>
+        .verify-wrap { width:min(620px, 100%); margin:0 auto; padding:28px; display:grid; gap:16px; }
+        .verify-wrap h2 { margin:0; font-family:"Space Grotesk", sans-serif; font-size:32px; }
+        .verify-form { display:grid; gap:12px; }
+        .notice { padding:14px 16px; border-radius:18px; background:rgba(111,71,16,.08); color:var(--muted); }
+        .notice.ok { background:rgba(45,122,87,.12); color:#2d7a57; }
+        .notice.err { background:rgba(183,71,71,.12); color:#9b2f2f; }
+    </style>
+}
+
+<section class="surface verify-wrap">
+    <span class="badge">Account Verification</span>
+    <h2>E-postanizi dogrulayin</h2>
+    <p class="text-muted">Hesabiniz olusturuldu. Gelen kutunuzdaki dogrulama baglantisini acin; dilerseniz telefon numaranizi da SMS koduyla dogrulayin.</p>
+
+    @if (TempData["Success"] is string ok)
+    {
+        <div class="notice ok">@ok</div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div class="notice err">@error</div>
+    }
+
+    <form method="post" action="/auth/resend-verification" class="verify-form">
+        @Html.AntiForgeryToken()
+        <label>
+            <span>E-posta veya kullanici adi</span>
+            <input name="EmailOrUsername" value="@resendValue" maxlength="150" required />
+        </label>
+        <button type="submit" class="btn btn-primary">Dogrulama mailini tekrar gonder</button>
+    </form>
+
+    <form method="post" action="/auth/resend-phone-verification" class="verify-form">
+        @Html.AntiForgeryToken()
+        <label>
+            <span>E-posta, telefon veya kullanici adi</span>
+            <input name="EmailOrUsername" value="@resendValue" maxlength="150" required />
+        </label>
+        <button type="submit" class="btn btn-secondary">SMS kodu gonder</button>
+    </form>
+
+    <form method="post" action="/auth/verify-phone" class="verify-form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="EmailOrUsername" value="@resendValue" />
+        <label>
+            <span>SMS dogrulama kodu</span>
+            <input name="PhoneCode" maxlength="16" inputmode="numeric" autocomplete="one-time-code" />
+        </label>
+        <button type="submit" class="btn btn-primary">Telefonu dogrula</button>
+    </form>
+
+    <div class="notice">
+        Dogruladiktan sonra <a href="/auth/login"><strong>giris ekranina</strong></a> donebilirsiniz.
+    </div>
+</section>

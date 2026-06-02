@@ -1,0 +1,85 @@
+@model IReadOnlyList<MGold.Domain.Entities.Notification>
+@{
+    var panelBase = User.IsInRole("SystemAdmin") ? "/admin" : "/owner";
+    ViewData["Title"] = "Bildirimler";
+    ViewData["PageDescription"] = "Okunmamis uyarilari, hedef rolleri ve operasyon mesajlarini tek listede yonet.";
+}
+
+@section Styles {
+    <style>
+        .notification-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .notification-stats {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+    </style>
+}
+
+<section class="surface surface-inner">
+    <div class="notification-head">
+        <div>
+            <h2 class="section-title">Bildirim Havuzu</h2>
+            <p class="section-copy">Okunma durumu ve hedef roller burada bir arada gorunur.</p>
+        </div>
+        <div class="notification-stats">
+            <span class="badge">@Model.Count bildirim</span>
+            <span class="badge">@Model.Count(x => !x.IsRead) okunmamis</span>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">Bildirim bulunmuyor.</div>
+    }
+    else
+    {
+        <div class="data-table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Baslik</th>
+                        <th>Tip</th>
+                        <th>Mesaj</th>
+                        <th>Rol</th>
+                        <th>Durum</th>
+                        <th>Islem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var notification in Model)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@notification.Title</strong>
+                                <div class="text-muted">@notification.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                            </td>
+                            <td>@notification.Type</td>
+                            <td>@notification.Message</td>
+                            <td>@notification.TargetRole</td>
+                            <td>
+                                <span class="badge">@(notification.IsRead ? "Okundu" : "Okunmadi")</span>
+                            </td>
+                            <td>
+                                @if (!notification.IsRead)
+                                {
+                                    <form method="post" action="@($"{panelBase}/notifications/read")">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@notification.Id" />
+                                        <button type="submit" class="btn btn-primary">Okundu isaretle</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

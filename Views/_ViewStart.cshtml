@@ -1,0 +1,12 @@
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+
+    Layout = controller switch
+    {
+        "Admin" => "_AdminLayout",
+        "Platform" => "_AdminLayout",
+        "Workforce" => "_AdminLayout",
+        "Customer" => "_CustomerLayout",
+        _ => "_PublicLayout"
+    };
+}

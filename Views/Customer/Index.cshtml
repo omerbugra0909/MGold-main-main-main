@@ -1,0 +1,210 @@
+@model MGold.Controllers.CustomerPanelViewModel
+@{
+    ViewData["Title"] = "Musteri Dashboard";
+    ViewData["PageDescription"] = "Urunler, siparisler, favoriler, profil ve iletisim modullerine tek bakista erisin.";
+}
+
+@section Styles {
+    <style>
+        .hero {
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 1.25fr .95fr;
+            gap: 18px;
+        }
+        .hero h2 {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: clamp(30px, 4vw, 44px);
+        }
+        .hero p { margin: 12px 0 0; color: var(--muted); line-height: 1.7; }
+        .hero-grid,
+        .module-grid,
+        .timeline { display: grid; gap: 14px; }
+        .hero-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .stat, .module-card, .mini-card { padding: 20px; }
+        .stat strong, .mini-card strong {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+        .stat span {
+            display: block;
+            margin-top: 12px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 30px;
+            color: var(--brand-strong);
+        }
+        .module-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
+        .module-card h3 {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 24px;
+        }
+        .module-card p { color: var(--muted); line-height: 1.65; min-height: 70px; }
+        .columns {
+            display: grid;
+            grid-template-columns: 1.08fr .92fr;
+            gap: 18px;
+            margin-top: 18px;
+        }
+        .panel { padding: 22px; }
+        .entry {
+            padding: 16px 18px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(98,67,25,0.08);
+        }
+        .entry + .entry { margin-top: 12px; }
+        @@media (max-width: 980px) {
+            .hero, .columns, .module-grid, .hero-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+}
+
+<section class="surface hero">
+    <div>
+        <span class="badge">Customer Hub</span>
+        <h2>Merhaba @Model.FullName, hesabiniz artik daha yonlendirici ve moduler.</h2>
+        <p>Bu panel siparis takibi, favori urunler, profil yonetimi ve destek iletisimini tek merkezde toplar. Her alan ayri sayfalara tasindigi icin ekranda ne yapabileceginiz ilk bakista net gorunur.</p>
+    </div>
+    <div class="hero-grid">
+        <article class="surface stat">
+            <strong>Toplam Siparis</strong>
+            <span>@Model.OrderCount</span>
+        </article>
+        <article class="surface stat">
+            <strong>Acik Siparis</strong>
+            <span>@Model.OpenOrderCount</span>
+        </article>
+        <article class="surface stat">
+            <strong>Favori Urun</strong>
+            <span>@Model.FavoriteCount</span>
+        </article>
+        <article class="surface stat">
+            <strong>Toplam Harcama</strong>
+            <span>@Model.TotalSpent.ToString("N0")</span>
+        </article>
+        <article class="surface stat">
+            <strong>Market Takip</strong>
+            <span>@Model.MarketWatchlistCount</span>
+        </article>
+    </div>
+</section>
+
+<section class="module-grid">
+    <article class="surface module-card">
+        <span class="badge">01</span>
+        <h3>Urunler</h3>
+        <p>@Model.ProductsCount urunluk vitrini filtreleyin, ilgilendiginiz parcalari favoriye ekleyin ve musteri akisi icinden siparis baslatin.</p>
+        <a asp-action="Products" class="btn btn-primary">Urunleri Incele</a>
+    </article>
+    <article class="surface module-card">
+        <span class="badge">02</span>
+        <h3>Siparislerim</h3>
+        <p>Olusturdugunuz siparisleri, odeme durumlarini ve fatura belgelerini tek modulde geriye donup takip edin.</p>
+        <a asp-action="Orders" class="btn btn-primary">Siparislerime Git</a>
+    </article>
+    <article class="surface module-card">
+        <span class="badge">03</span>
+        <h3>Favoriler</h3>
+        <p>Karar asamasindaki urunleri ayri tutun; sonra geri donup karsilastirarak siparis vermek daha kolay olsun.</p>
+        <a asp-action="Favorites" class="btn btn-primary">Favorileri Ac</a>
+    </article>
+    <article class="surface module-card">
+        <span class="badge">04</span>
+        <h3>Canli Piyasalar</h3>
+        <p>Altin, doviz, emtia ve kripto fiyatlarini tek ekrandan takip edin; kendi izleme listenizi olusturun.</p>
+        <a asp-controller="Market" asp-action="Customer" class="btn btn-primary">Market Ekrani</a>
+    </article>
+    <article class="surface module-card">
+        <span class="badge">05</span>
+        <h3>Profil ve Iletisim</h3>
+        <p>Hesap bilgileriniz, destek mesajlariniz ve sonraki aksiyonlariniz birbirini tamamlayan iki temiz module ayrildi.</p>
+        <div class="cluster">
+            <a asp-action="Profile" class="btn btn-secondary">Profil</a>
+            <a asp-action="Contact" class="btn btn-primary">Iletisim</a>
+        </div>
+    </article>
+</section>
+
+<section class="columns">
+    <article class="surface panel">
+        <h2 class="section-title">Son Siparisler</h2>
+        <p class="section-copy">En son siparislerinizin durumu ve odeme ilerleyisi burada ozetlenir.</p>
+        <div class="timeline" style="margin-top:16px;">
+            @if (!Model.Orders.Any())
+            {
+                <div class="empty-state">Henuz siparis kaydi yok.</div>
+            }
+            else
+            {
+                @foreach (var order in Model.Orders.Take(4))
+                {
+                    <article class="entry">
+                        <div class="cluster">
+                            <strong>@order.OrderNumber</strong>
+                            <span class="badge">@order.Status</span>
+                            <span class="badge">@order.PaymentStatus</span>
+                        </div>
+                        <div class="text-muted" style="margin-top:8px;">@order.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                        <div style="margin-top:8px;">@order.PaidAmount.ToString("N2") / @order.TotalAmount.ToString("N2") TL</div>
+                        <div style="margin-top:12px;">
+                            <a asp-action="OrderDetails" asp-route-id="@order.Id" class="btn btn-primary">Detaya Git</a>
+                        </div>
+                    </article>
+                }
+            }
+        </div>
+    </article>
+
+    <div class="hero-grid">
+        <article class="surface mini-card">
+            <strong>Favori One Cikanlar</strong>
+            @if (!Model.FavoriteHighlights.Any())
+            {
+                <div class="text-muted" style="margin-top:12px;">Favori listeniz henuz bos.</div>
+            }
+            else
+            {
+                @foreach (var item in Model.FavoriteHighlights.Take(3))
+                {
+                    <div style="margin-top:12px;">
+                        <div><strong>@item.ProductName</strong></div>
+                        <div class="text-muted">@item.SalePrice.ToString("N2") TL</div>
+                    </div>
+                }
+            }
+        </article>
+        <article class="surface mini-card">
+            <strong>Destek Durumu</strong>
+            <div style="margin-top:12px; font-family:'Space Grotesk', sans-serif; font-size:26px; color:var(--brand-strong);">@Model.UnresolvedContactCount</div>
+            <div class="text-muted">Acil takipte olan son iletisim kaydiniz</div>
+            <div style="margin-top:14px;">
+                <a asp-action="Contact" class="btn btn-secondary">Mesajlari Gor</a>
+            </div>
+        </article>
+        <article class="surface mini-card">
+            <strong>Canli Piyasa Ozetleri</strong>
+            @if (!Model.MarketHighlights.Any())
+            {
+                <div class="text-muted" style="margin-top:12px;">Market verisi hazirlaniyor.</div>
+            }
+            else
+            {
+                @foreach (var item in Model.MarketHighlights)
+                {
+                    <div style="margin-top:12px;">
+                        <div><strong>@item.Symbol</strong> @item.DisplayName</div>
+                        <div class="text-muted">@item.Price.ToString("N2") @item.DisplayCurrency • @item.Change24hPercent.ToString("N2")%</div>
+                    </div>
+                }
+            }
+            <div style="margin-top:14px;">
+                <a asp-controller="Market" asp-action="Customer" class="btn btn-secondary">Marketi Ac</a>
+            </div>
+        </article>
+    </div>
+</section>

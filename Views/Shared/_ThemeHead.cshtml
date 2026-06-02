@@ -1,0 +1,28 @@
+@{
+    var claimTheme = User.FindFirst("theme")?.Value;
+    var cookieTheme = Context.Request.Cookies["MGold.Theme"];
+    var isAuthenticatedForTheme = User.Identity?.IsAuthenticated == true;
+    var userThemeKey = isAuthenticatedForTheme
+        ? $"user:{User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown"}"
+        : "anonymous";
+    var selectedTheme = isAuthenticatedForTheme
+        ? (string.Equals(claimTheme, "diamond-silver", StringComparison.OrdinalIgnoreCase) ? "diamond-silver" : "gold-premium")
+        : (string.Equals(cookieTheme, "diamond-silver", StringComparison.OrdinalIgnoreCase) ? "diamond-silver" : "gold-premium");
+}
+<script>
+    window.MGoldTheme = {
+        current: "@selectedTheme",
+        userKey: "@userThemeKey",
+        saveUrl: "/api/theme/preference"
+    };
+    document.documentElement.dataset.theme = (() => {
+        const scopedKey = `mgold.theme.${window.MGoldTheme.userKey || "anonymous"}`;
+        try {
+            return localStorage.getItem(scopedKey) || window.MGoldTheme.current || "gold-premium";
+        } catch {
+            return window.MGoldTheme.current || "gold-premium";
+        }
+    })();
+</script>
+<link rel="stylesheet" href="~/css/mgold-themes.css" asp-append-version="true" />
+<script defer src="~/js/mgold-theme.js" asp-append-version="true"></script>

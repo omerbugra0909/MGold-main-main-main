@@ -1,0 +1,8 @@
+/bin/
+/obj/
+/.codex/
+/Anthropic.claude-code-2.1.126@linux-x64/
+/cursor.AppImage
+/.keys/
+/mgold-dev.db-shm
+/mgold-dev.db-wal

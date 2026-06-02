@@ -1,0 +1,66 @@
+@model MGold.Controllers.UserRegisterViewModel
+@{
+    ViewData["Title"] = "Kullanici Kaydi";
+    ViewData["PageDescription"] = "Yeni musteri hesabinizi olusturun ve kendi panelinizden siparislerinizi yonetin.";
+    var returnUrl = ViewData["ReturnUrl"]?.ToString();
+}
+
+@section Styles {
+    <style>
+        .auth-wrap {
+            width: min(700px, 100%);
+            margin: 0 auto;
+            padding: 28px;
+        }
+        .auth-wrap h2 {
+            margin: 0 0 10px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 32px;
+        }
+        .auth-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 16px;
+        }
+        .full { grid-column: 1 / -1; }
+        @@media (max-width: 760px) {
+            .auth-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+}
+
+<section class="surface auth-wrap">
+    <span class="badge">New Customer</span>
+    <h2>Kullanici Kaydi</h2>
+    <p class="text-muted">Kayit sonrasinda dogrulama maili gonderilir; e-posta dogrulanmadan hesap aktif kullanima acilmaz.</p>
+
+    <form method="post" class="auth-grid">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
+        <div class="full">@Html.ValidationSummary(false)</div>
+        <label>
+            <span>Kullanici Adi</span>
+            <input asp-for="Username" />
+        </label>
+        <label>
+            <span>Ad Soyad</span>
+            <input asp-for="FullName" />
+        </label>
+        <label>
+            <span>E-posta</span>
+            <input asp-for="Email" />
+        </label>
+        <label>
+            <span>Telefon</span>
+            <input asp-for="Phone" />
+        </label>
+        <label class="full">
+            <span>Sifre</span>
+            <input asp-for="Password" type="password" />
+        </label>
+        <div class="full">
+            <button type="submit" class="btn btn-primary">Hesap Olustur</button>
+        </div>
+    </form>
+</section>

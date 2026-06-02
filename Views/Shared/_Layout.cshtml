@@ -1,0 +1,965 @@
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using MGold.Domain.Constants
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var action = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+    var pageTitle = ViewData["Title"]?.ToString() ?? "MGold";
+    var isAdminArea = string.Equals(controller, "Admin", StringComparison.OrdinalIgnoreCase);
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var isAdmin = User.IsInRole(RoleConstants.Admin);
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+    var authErrors = (TempData["AuthErrors"]?.ToString() ?? string.Empty)
+        .Split("||", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    var authInfo = TempData["AuthInfo"]?.ToString();
+    var openAuthModal = string.Equals(TempData["OpenAuthModal"]?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+    var authTab = TempData["AuthTab"]?.ToString() ?? "login";
+
+    string NavClass(string targetController, string? targetAction = null)
+    {
+        var matchesController = string.Equals(controller, targetController, StringComparison.OrdinalIgnoreCase);
+        var matchesAction = targetAction is null || string.Equals(action, targetAction, StringComparison.OrdinalIgnoreCase);
+        return matchesController && matchesAction ? "sidebar-link active" : "sidebar-link";
+    }
+}
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@pageTitle - MGold</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    @await Html.PartialAsync("_ThemeHead")
+    <style>
+        :root {
+            --bg: #f4efe7;
+            --panel: rgba(255, 251, 245, 0.86);
+            --panel-strong: rgba(255, 248, 236, 0.98);
+            --line: rgba(98, 67, 25, 0.12);
+            --ink: #22180f;
+            --muted: #7f6f5d;
+            --brand: #996515;
+            --brand-strong: #6f4710;
+            --accent: #dcb35c;
+            --danger: #b74747;
+            --success: #2d7a57;
+            --shadow: 0 26px 60px rgba(58, 40, 18, 0.12);
+        }
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Outfit", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(242, 205, 120, 0.28), transparent 24%),
+                radial-gradient(circle at 85% 10%, rgba(160, 208, 190, 0.18), transparent 18%),
+                linear-gradient(135deg, #f6f2ec 0%, #efe7dc 50%, #f8f4ee 100%);
+        }
+        body.admin-theme {
+            --bg: #10141d;
+            --panel: rgba(20, 27, 40, 0.9);
+            --panel-strong: rgba(16, 22, 34, 0.98);
+            --line: rgba(145, 167, 210, 0.12);
+            --ink: #eef3ff;
+            --muted: #99a6c1;
+            --brand: #7ca7ff;
+            --brand-strong: #bfd2ff;
+            --accent: #5f84ff;
+            --danger: #ff7575;
+            --success: #6ed6a8;
+            --shadow: 0 26px 70px rgba(0, 0, 0, 0.32);
+            background:
+                radial-gradient(circle at top left, rgba(95, 132, 255, 0.22), transparent 24%),
+                radial-gradient(circle at 85% 10%, rgba(87, 206, 170, 0.12), transparent 18%),
+                linear-gradient(135deg, #0b0f17 0%, #151b27 55%, #0f1520 100%);
+        }
+        a { color: inherit; }
+        .dashboard-shell {
+            display: grid;
+            grid-template-columns: 280px minmax(0, 1fr);
+            min-height: 100vh;
+        }
+        .sidebar {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            padding: 24px 18px;
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            background: linear-gradient(180deg, rgba(47, 31, 8, 0.96) 0%, rgba(77, 51, 17, 0.96) 100%);
+            color: #f7efe2;
+        }
+        body.admin-theme .sidebar {
+            background: linear-gradient(180deg, rgba(9, 13, 20, 0.98) 0%, rgba(16, 24, 38, 0.98) 100%);
+            color: #ecf3ff;
+        }
+        .brand-block {
+            padding: 18px;
+            border-radius: 24px;
+            background: linear-gradient(160deg, rgba(255, 221, 150, 0.24), rgba(255, 255, 255, 0.06));
+            border: 1px solid rgba(255, 233, 191, 0.12);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        body.admin-theme .brand-block {
+            background: linear-gradient(160deg, rgba(124, 167, 255, 0.16), rgba(255, 255, 255, 0.02));
+            border-color: rgba(191, 210, 255, 0.08);
+        }
+        .brand-kicker {
+            font-size: 11px;
+            letter-spacing: .24em;
+            text-transform: uppercase;
+            color: rgba(255, 241, 215, 0.72);
+        }
+        body.admin-theme .brand-kicker {
+            color: rgba(228, 237, 255, 0.66);
+        }
+        .brand-title {
+            margin: 10px 0 6px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 30px;
+            font-weight: 700;
+        }
+        .brand-copy {
+            margin: 0;
+            color: rgba(247, 239, 226, 0.74);
+            line-height: 1.5;
+            font-size: 14px;
+        }
+        body.admin-theme .brand-copy {
+            color: rgba(228, 237, 255, 0.72);
+        }
+        .sidebar-section {
+            margin-top: 22px;
+        }
+        .sidebar-label {
+            margin: 0 0 10px;
+            padding: 0 10px;
+            font-size: 11px;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: rgba(255, 241, 215, 0.52);
+        }
+        body.admin-theme .sidebar-label {
+            color: rgba(208, 220, 255, 0.52);
+        }
+        .sidebar-nav {
+            display: grid;
+            gap: 8px;
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 13px 14px;
+            border-radius: 18px;
+            text-decoration: none;
+            color: rgba(255, 245, 230, 0.82);
+            transition: transform .18s ease, background-color .18s ease, color .18s ease;
+        }
+        body.admin-theme .sidebar-link {
+            color: rgba(230, 239, 255, 0.82);
+        }
+        .sidebar-link:hover {
+            transform: translateX(2px);
+            background: rgba(255,255,255,0.08);
+        }
+        .sidebar-link.active {
+            background: linear-gradient(135deg, rgba(255, 214, 126, 0.24), rgba(255, 255, 255, 0.08));
+            color: #fff4d6;
+            box-shadow: inset 0 0 0 1px rgba(255, 223, 166, 0.16);
+        }
+        body.admin-theme .sidebar-link.active {
+            background: linear-gradient(135deg, rgba(124, 167, 255, 0.24), rgba(255, 255, 255, 0.04));
+            color: #e8f1ff;
+            box-shadow: inset 0 0 0 1px rgba(191, 210, 255, 0.12);
+        }
+        .nav-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: rgba(255,255,255,0.08);
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .nav-copy strong {
+            display: block;
+            font-size: 14px;
+        }
+        .nav-copy span {
+            display: block;
+            margin-top: 2px;
+            font-size: 12px;
+            color: rgba(255, 241, 215, 0.62);
+        }
+        body.admin-theme .nav-copy span {
+            color: rgba(208, 220, 255, 0.62);
+        }
+        .sidebar-note {
+            margin-top: 22px;
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: rgba(255, 241, 215, 0.72);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        body.admin-theme .sidebar-note {
+            color: rgba(223, 234, 255, 0.72);
+        }
+        .main-area {
+            min-width: 0;
+            padding: 22px;
+        }
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+        .page-copy h1 {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: clamp(30px, 4vw, 42px);
+            line-height: 1.05;
+        }
+        .page-copy p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 15px;
+        }
+        .topbar-pill {
+            padding: 14px 16px;
+            min-width: 210px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(255, 244, 220, 0.88), rgba(255,255,255,0.64));
+            border: 1px solid rgba(151, 107, 28, 0.12);
+            box-shadow: var(--shadow);
+            color: #533919;
+        }
+        body.admin-theme .topbar-pill {
+            background: linear-gradient(135deg, rgba(27, 35, 50, 0.94), rgba(20, 27, 40, 0.88));
+            border-color: rgba(124, 167, 255, 0.12);
+            color: #eaf2ff;
+        }
+        .topbar-pill strong {
+            display: block;
+            font-size: 14px;
+            color: var(--brand-strong);
+        }
+        .topbar-pill span {
+            display: block;
+            margin-top: 5px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .page-body { min-width: 0; }
+        .surface {
+            background: var(--panel);
+            border: 1px solid rgba(255,255,255,0.54);
+            border-radius: 28px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
+        }
+        .surface-inner { padding: 22px; }
+        .section-title {
+            margin: 0 0 6px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 24px;
+        }
+        .section-copy {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+        .btn {
+            border: none;
+            border-radius: 14px;
+            padding: 11px 16px;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font: inherit;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-primary {
+            color: #2f1d07;
+            background: linear-gradient(135deg, #f6d37b 0%, #d4a249 100%);
+            box-shadow: 0 16px 32px rgba(164, 115, 25, 0.22);
+        }
+        body.admin-theme .btn-primary {
+            color: #f5f8ff;
+            background: linear-gradient(135deg, #5d82ff 0%, #3f62d6 100%);
+            box-shadow: 0 16px 32px rgba(40, 61, 130, 0.3);
+        }
+        .btn-secondary {
+            color: #533919;
+            background: rgba(111, 71, 16, 0.08);
+            border: 1px solid rgba(111, 71, 16, 0.12);
+        }
+        body.admin-theme .btn-secondary {
+            color: #e9f1ff;
+            background: rgba(124, 167, 255, 0.08);
+            border-color: rgba(124, 167, 255, 0.16);
+        }
+        .btn-danger {
+            color: #fff8f8;
+            background: linear-gradient(135deg, #dc7d7d 0%, #b74747 100%);
+        }
+        .empty-state {
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px dashed rgba(111, 71, 16, 0.24);
+            background: rgba(255, 249, 237, 0.9);
+            color: var(--muted);
+        }
+        body.admin-theme .empty-state {
+            background: rgba(19, 27, 40, 0.72);
+            border-color: rgba(124, 167, 255, 0.16);
+        }
+        .data-table-wrap {
+            overflow: auto;
+            border-radius: 22px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.78);
+        }
+        body.admin-theme .data-table-wrap {
+            background: rgba(17, 24, 36, 0.8);
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 760px;
+        }
+        .data-table th,
+        .data-table td {
+            padding: 15px 16px;
+            border-bottom: 1px solid rgba(98, 67, 25, 0.08);
+            text-align: left;
+            vertical-align: top;
+        }
+        body.admin-theme .data-table th,
+        body.admin-theme .data-table td {
+            border-bottom-color: rgba(124, 167, 255, 0.08);
+        }
+        .data-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: linear-gradient(180deg, #fff3d7 0%, #f7e0ab 100%);
+            color: #5e4218;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+        body.admin-theme .data-table thead th {
+            background: linear-gradient(180deg, #172131 0%, #101822 100%);
+            color: #dce8ff;
+        }
+        .data-table tbody tr:hover {
+            background: rgba(252, 242, 217, 0.62);
+        }
+        body.admin-theme .data-table tbody tr:hover {
+            background: rgba(124, 167, 255, 0.08);
+        }
+        .stack {
+            display: grid;
+            gap: 18px;
+        }
+        .cluster {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            background: rgba(153, 101, 21, 0.1);
+            color: var(--brand-strong);
+        }
+        body.admin-theme .badge {
+            background: rgba(124, 167, 255, 0.12);
+        }
+        .text-muted { color: var(--muted); }
+        .text-danger { color: var(--danger); }
+        .text-success { color: var(--success); }
+        input, select, textarea {
+            width: 100%;
+            border: 1px solid rgba(98, 67, 25, 0.16);
+            border-radius: 14px;
+            padding: 11px 13px;
+            background: rgba(255,255,255,0.78);
+            color: var(--ink);
+            font: inherit;
+            outline: none;
+            transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+        }
+        body.admin-theme input,
+        body.admin-theme select,
+        body.admin-theme textarea {
+            background: rgba(14, 20, 31, 0.92);
+            border-color: rgba(124, 167, 255, 0.14);
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: rgba(153, 101, 21, 0.58);
+            box-shadow: 0 0 0 4px rgba(220, 179, 92, 0.2);
+            transform: translateY(-1px);
+        }
+        body.admin-theme input:focus,
+        body.admin-theme select:focus,
+        body.admin-theme textarea:focus {
+            border-color: rgba(124, 167, 255, 0.48);
+            box-shadow: 0 0 0 4px rgba(95, 132, 255, 0.16);
+        }
+        textarea { resize: vertical; }
+        .validation-summary-errors,
+        .field-validation-error,
+        .auth-errors {
+            color: #9f2f2f;
+            font-size: 12px;
+        }
+        body.admin-theme .auth-errors,
+        body.admin-theme .field-validation-error,
+        body.admin-theme .validation-summary-errors {
+            color: #ff8f8f;
+        }
+        .validation-summary-errors,
+        .auth-errors {
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: rgba(255, 236, 236, 0.95);
+            border: 1px solid rgba(183, 71, 71, 0.2);
+        }
+        body.admin-theme .auth-errors,
+        body.admin-theme .validation-summary-errors {
+            background: rgba(84, 28, 28, 0.38);
+            border-color: rgba(255, 117, 117, 0.18);
+        }
+        .validation-summary-errors ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+        .account-rail {
+            position: fixed;
+            right: 18px;
+            bottom: 22px;
+            z-index: 45;
+            display: grid;
+            gap: 10px;
+        }
+        .account-fab {
+            min-width: 220px;
+            padding: 14px 18px;
+            border-radius: 18px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.18);
+        }
+        .account-fab small {
+            display: block;
+            opacity: .78;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .auth-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(15, 15, 20, 0.52);
+            backdrop-filter: blur(12px);
+            z-index: 50;
+        }
+        .auth-modal.is-open { display: flex; }
+        .auth-card {
+            width: min(980px, 100%);
+            border-radius: 30px;
+            overflow: hidden;
+            background: var(--panel-strong);
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.3);
+            display: grid;
+            grid-template-columns: .92fr 1.08fr;
+        }
+        .auth-showcase {
+            padding: 30px;
+            background:
+                radial-gradient(circle at top left, rgba(255, 215, 120, 0.3), transparent 28%),
+                linear-gradient(160deg, rgba(53, 36, 12, 0.98), rgba(112, 77, 24, 0.92));
+            color: #fff3dc;
+        }
+        body.admin-theme .auth-showcase {
+            background:
+                radial-gradient(circle at top left, rgba(95, 132, 255, 0.26), transparent 28%),
+                linear-gradient(160deg, rgba(8, 12, 20, 0.98), rgba(19, 29, 46, 0.94));
+        }
+        .auth-showcase h2 {
+            margin: 14px 0 10px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 36px;
+            line-height: 1.05;
+        }
+        .auth-showcase p {
+            margin: 0;
+            color: rgba(255, 243, 220, 0.82);
+            line-height: 1.7;
+        }
+        .auth-benefits {
+            display: grid;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .auth-benefit {
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .auth-forms {
+            padding: 30px;
+            display: grid;
+            gap: 18px;
+        }
+        .auth-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .auth-tabs {
+            display: flex;
+            gap: 8px;
+            background: rgba(111, 71, 16, 0.08);
+            border-radius: 16px;
+            padding: 6px;
+        }
+        body.admin-theme .auth-tabs {
+            background: rgba(124, 167, 255, 0.08);
+        }
+        .auth-tab {
+            border: none;
+            border-radius: 12px;
+            padding: 10px 16px;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+        }
+        .auth-tab.active {
+            background: rgba(255,255,255,0.9);
+            color: var(--brand-strong);
+        }
+        body.admin-theme .auth-tab.active {
+            background: rgba(13, 20, 31, 0.94);
+        }
+        .auth-panel { display: none; }
+        .auth-panel.active { display: grid; gap: 14px; }
+        .auth-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .auth-field {
+            display: grid;
+            gap: 7px;
+        }
+        .auth-field span {
+            font-size: 13px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .auth-helper {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        .auth-link {
+            color: var(--brand);
+            text-decoration: none;
+            font-weight: 700;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+        }
+        .auth-note {
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(111, 71, 16, 0.08);
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        body.admin-theme .auth-note {
+            background: rgba(124, 167, 255, 0.08);
+        }
+        .icon-btn {
+            width: 42px;
+            height: 42px;
+            border: 1px solid rgba(98, 67, 25, 0.12);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.72);
+            color: var(--ink);
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        body.admin-theme .icon-btn {
+            background: rgba(12, 18, 28, 0.88);
+            border-color: rgba(124, 167, 255, 0.12);
+            color: #eaf2ff;
+        }
+        @@media (max-width: 1120px) {
+            .dashboard-shell { grid-template-columns: 1fr; }
+            .sidebar {
+                position: static;
+                height: auto;
+                border-right: 0;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+            }
+            .sidebar-nav {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .auth-card { grid-template-columns: 1fr; }
+        }
+        @@media (max-width: 760px) {
+            .main-area { padding: 16px; }
+            .topbar { flex-direction: column; align-items: stretch; }
+            .sidebar-nav { grid-template-columns: 1fr; }
+            .surface-inner { padding: 18px; }
+            .topbar-pill { min-width: 0; }
+            .account-rail {
+                left: 16px;
+                right: 16px;
+                bottom: 16px;
+            }
+            .account-fab { min-width: 0; width: 100%; }
+            .auth-forms,
+            .auth-showcase { padding: 22px; }
+            .auth-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="@(isAdminArea ? "admin-theme" : string.Empty)">
+    <div class="dashboard-shell">
+        <aside class="sidebar">
+            <div class="brand-block">
+                <div class="brand-kicker">Dashboard Suite</div>
+                <div class="brand-title">MGold</div>
+                <p class="brand-copy">Urun yonetimi, giris sistemi, siparis akisi ve admin operasyonlari tek panelde bir arada.</p>
+            </div>
+
+            <div class="sidebar-section">
+                <p class="sidebar-label">Genel</p>
+                <nav class="sidebar-nav">
+                    <a class="@NavClass("Public", "Index")" asp-controller="Public" asp-action="Index">
+                        <span class="nav-icon">01</span>
+                        <span class="nav-copy">
+                            <strong>Dashboard</strong>
+                            <span>Ozetler ve hizli erisim</span>
+                        </span>
+                    </a>
+                    <a class="@NavClass("Public", "Products")" asp-controller="Public" asp-action="Products">
+                        <span class="nav-icon">02</span>
+                        <span class="nav-copy">
+                            <strong>Urunler</strong>
+                            <span>Genis liste ve filtreleme</span>
+                        </span>
+                    </a>
+                    @if (isAuthenticated)
+                    {
+                        <a class="@NavClass("Account", "Profile")" asp-controller="Account" asp-action="Profile">
+                            <span class="nav-icon">03</span>
+                            <span class="nav-copy">
+                                <strong>Profilim</strong>
+                                <span>Hesap ve siparis gecmisi</span>
+                            </span>
+                        </a>
+                    }
+                </nav>
+            </div>
+
+            @if (isAdmin)
+            {
+                <div class="sidebar-section">
+                    <p class="sidebar-label">Admin Paneli</p>
+                    <nav class="sidebar-nav">
+                        <a class="@NavClass("Admin", "Index")" asp-controller="Admin" asp-action="Index">
+                            <span class="nav-icon">A1</span>
+                            <span class="nav-copy">
+                                <strong>Dashboard</strong>
+                                <span>Kullanici ve siparis ozeti</span>
+                            </span>
+                        </a>
+                        <a class="@NavClass("Admin", "Products")" asp-controller="Admin" asp-action="Products">
+                            <span class="nav-icon">A2</span>
+                            <span class="nav-copy">
+                                <strong>Urunler</strong>
+                                <span>CRUD ve stok yonetimi</span>
+                            </span>
+                        </a>
+                        <a class="@NavClass("Admin", "Orders")" asp-controller="Admin" asp-action="Orders">
+                            <span class="nav-icon">A3</span>
+                            <span class="nav-copy">
+                                <strong>Siparisler</strong>
+                                <span>Durumlar ve teslim akis</span>
+                            </span>
+                        </a>
+                        <a class="@NavClass("Admin", "Users")" asp-controller="Admin" asp-action="Users">
+                            <span class="nav-icon">A4</span>
+                            <span class="nav-copy">
+                                <strong>Kullanicilar</strong>
+                                <span>Rol ve hesap yonetimi</span>
+                            </span>
+                        </a>
+                        <a class="@NavClass("Admin", "Reviews")" asp-controller="Admin" asp-action="Reviews">
+                            <span class="nav-icon">A5</span>
+                            <span class="nav-copy">
+                                <strong>Yorumlar</strong>
+                                <span>Moderasyon merkezi</span>
+                            </span>
+                        </a>
+                        <a class="@NavClass("Admin", "Notifications")" asp-controller="Admin" asp-action="Notifications">
+                            <span class="nav-icon">A6</span>
+                            <span class="nav-copy">
+                                <strong>Bildirimler</strong>
+                                <span>Okunma ve operasyon notlari</span>
+                            </span>
+                        </a>
+                    </nav>
+                </div>
+            }
+
+            <div class="sidebar-note">
+                @if (isAuthenticated)
+                {
+                    <span>@(User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value ?? User.Identity?.Name) hesabiyla oturum acik.</span>
+                }
+                else
+                {
+                    <span>Siparis vermek ve profil gecmisini gormek icin giris yapman gerekir.</span>
+                }
+            </div>
+        </aside>
+
+        <main class="main-area">
+            <header class="topbar">
+                <div class="page-copy">
+                    <h1>@pageTitle</h1>
+                    <p>@(ViewData["PageDescription"] ?? "Operasyonlarini premium bir kontrol paneli icinde yonet.")</p>
+                </div>
+                <div class="topbar-actions">
+                    @await Html.PartialAsync("_ThemeSwitcher")
+                    <div class="topbar-pill">
+                        <strong>@(isAuthenticated ? "Oturum acik" : "Guvenli erisim")</strong>
+                        <span>
+                            @(isAuthenticated
+                                ? $"{User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value} ile giris yapildi."
+                                : "Siparis, profil ve admin alanlari rol bazli yetkiyle korunur.")
+                        </span>
+                    </div>
+                </div>
+            </header>
+            <div class="page-body">
+                @RenderBody()
+            </div>
+        </main>
+    </div>
+
+    <div class="account-rail">
+        @if (!isAuthenticated)
+        {
+            <button id="openAuthButton" type="button" class="btn btn-primary account-fab">
+                Giriş Yap / Kayıt Ol
+                <small>Urun siparisi ve hesap paneli icin</small>
+            </button>
+        }
+        else
+        {
+            <a asp-controller="Account" asp-action="Profile" class="btn btn-primary account-fab">
+                Profilim
+                <small>Siparis gecmisi ve hesap bilgileri</small>
+            </a>
+            <form method="post" asp-controller="Account" asp-action="Logout">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                <button type="submit" class="btn btn-secondary account-fab">
+                    Cikis Yap
+                    <small>Guvenli oturumu sonlandir</small>
+                </button>
+            </form>
+        }
+    </div>
+
+    <section id="authModal" class="auth-modal @(openAuthModal ? "is-open" : null)" data-default-tab="@authTab">
+        <article class="auth-card">
+            <div class="auth-showcase">
+                <div class="brand-kicker">Kimlik ve erisim</div>
+                <h2>Guvenli giris yap, siparis ver ve hesabini yonet.</h2>
+                <p>Kullanici adi, e-posta ve telefon bilgisi ile gercek hesap olustur. Siparis gecmisin ve profilin tek panelde seninle kalir.</p>
+                <div class="auth-benefits">
+                    <div class="auth-benefit">Siparis vermek icin oturum gerekli.</div>
+                    <div class="auth-benefit">Sifreler guvenli sekilde hashlenerek saklanir.</div>
+                    <div class="auth-benefit">Telefon alani +90 formatinda dogrulanir.</div>
+                </div>
+            </div>
+            <div class="auth-forms">
+                <div class="auth-top">
+                    <div class="auth-tabs">
+                        <button type="button" class="auth-tab @(authTab == "login" ? "active" : null)" data-tab="login">Giris Yap</button>
+                        <button type="button" class="auth-tab @(authTab == "register" ? "active" : null)" data-tab="register">Kayit Ol</button>
+                    </div>
+                    <button id="closeAuthModal" type="button" class="icon-btn" aria-label="Giris modalini kapat">×</button>
+                </div>
+
+                @if (authErrors.Length > 0)
+                {
+                    <div class="auth-errors">
+                        @foreach (var error in authErrors)
+                        {
+                            <div>@error</div>
+                        }
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(authInfo))
+                {
+                    <div class="auth-note">@authInfo</div>
+                }
+
+                <form method="post" asp-controller="Account" asp-action="Login" class="auth-panel @(authTab == "login" ? "active" : null)" data-panel="login">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    <div class="auth-field">
+                        <span>E-posta veya Kullanici Adi</span>
+                        <input name="EmailOrUsername" maxlength="150" required placeholder="demo@site.com veya demo" />
+                    </div>
+                    <div class="auth-field">
+                        <span>Sifre</span>
+                        <input name="Password" type="password" maxlength="64" required placeholder="Sifreniz" />
+                    </div>
+                    <div class="auth-helper">
+                        <span>Admin ornek girisi: `admin@site.com / Admin123*`</span>
+                        <button type="button" class="auth-link" id="forgotPasswordLink">Sifremi Unuttum</button>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Giris Yap</button>
+                </form>
+
+                <form method="post" asp-controller="Account" asp-action="Register" class="auth-panel @(authTab == "register" ? "active" : null)" data-panel="register">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    <div class="auth-grid">
+                        <label class="auth-field">
+                            <span>Kullanici Adi</span>
+                            <input name="Username" maxlength="80" required placeholder="kullaniciadi" />
+                        </label>
+                        <label class="auth-field">
+                            <span>Ad Soyad</span>
+                            <input name="FullName" maxlength="120" required placeholder="Adiniz Soyadiniz" />
+                        </label>
+                        <label class="auth-field">
+                            <span>E-posta</span>
+                            <input name="Email" type="email" maxlength="150" required placeholder="ornek@mail.com" />
+                        </label>
+                        <label class="auth-field">
+                            <span>Telefon Dogrulama</span>
+                            <input name="Phone" maxlength="30" required placeholder="05xxxxxxxxx" pattern="^(\+90|90|0)?5\d{9}$" />
+                        </label>
+                    </div>
+                    <label class="auth-field">
+                        <span>Sifre</span>
+                        <input name="Password" type="password" minlength="8" maxlength="64" required placeholder="En az 8 karakter" />
+                    </label>
+                    <div class="auth-note">Kayit sonrasi dogrulama maili gonderilir; e-posta dogrulanmadan hesap aktif olmaz.</div>
+                    <button type="submit" class="btn btn-primary">Hesap Olustur</button>
+                </form>
+
+                <form method="post" action="/auth/forgot-password" id="forgotPasswordForm" style="display:none;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Identifier" id="forgotPasswordValue" />
+                    <input type="hidden" name="Channel" value="email" />
+                </form>
+            </div>
+        </article>
+    </section>
+
+    @await RenderSectionAsync("Scripts", required: false)
+    <script>
+        const authModal = document.getElementById("authModal");
+        const openAuthButton = document.getElementById("openAuthButton");
+        const closeAuthModal = document.getElementById("closeAuthModal");
+        const authTabs = Array.from(document.querySelectorAll(".auth-tab"));
+        const authPanels = Array.from(document.querySelectorAll(".auth-panel"));
+        const forgotPasswordLink = document.getElementById("forgotPasswordLink");
+        const forgotPasswordValue = document.getElementById("forgotPasswordValue");
+        const forgotPasswordForm = document.getElementById("forgotPasswordForm");
+
+        const openAuthModal = (tab = authModal?.dataset.defaultTab ?? "login") => {
+            authModal?.classList.add("is-open");
+            switchAuthTab(tab);
+        };
+
+        const closeAuth = () => authModal?.classList.remove("is-open");
+
+        const switchAuthTab = (tab) => {
+            authTabs.forEach((button) => button.classList.toggle("active", button.dataset.tab === tab));
+            authPanels.forEach((panel) => panel.classList.toggle("active", panel.dataset.panel === tab));
+            if (authModal) {
+                authModal.dataset.defaultTab = tab;
+            }
+        };
+
+        authTabs.forEach((button) => {
+            button.addEventListener("click", () => switchAuthTab(button.dataset.tab));
+        });
+
+        openAuthButton?.addEventListener("click", () => openAuthModal("login"));
+        closeAuthModal?.addEventListener("click", closeAuth);
+
+        authModal?.addEventListener("click", (event) => {
+            if (event.target === authModal) {
+                closeAuth();
+            }
+        });
+
+        document.querySelectorAll(".require-auth").forEach((button) => {
+            button.addEventListener("click", () => {
+                const message = button.dataset.authMessage || "Urun siparisi icin giris yapmaniz gerekmektedir.";
+                alert(message);
+                openAuthModal(button.dataset.authTab || "login");
+            });
+        });
+
+        forgotPasswordLink?.addEventListener("click", () => {
+            const loginInput = document.querySelector("input[name='EmailOrUsername']");
+            forgotPasswordValue.value = loginInput?.value || "";
+            forgotPasswordForm?.submit();
+        });
+
+        if (authModal?.classList.contains("is-open")) {
+            openAuthModal(authModal.dataset.defaultTab || "login");
+        }
+    </script>
+</body>
+</html>

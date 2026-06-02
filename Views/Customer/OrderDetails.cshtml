@@ -1,0 +1,98 @@
+@model MGold.Application.DTOs.OrderDto
+@{
+    ViewData["Title"] = $"Siparis {Model.OrderNumber}";
+    ViewData["PageDescription"] = "Siparisinizin urun, odeme, bildirim ve islem gecmisi.";
+}
+
+@section Styles {
+    <style>
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1.05fr .95fr;
+            gap: 18px;
+        }
+        .panel { padding: 22px; }
+        .entries { display: grid; gap: 12px; }
+        .entry {
+            padding: 16px 18px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(98,67,25,0.08);
+        }
+        @@media (max-width: 980px) {
+            .detail-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+}
+
+<div class="detail-grid">
+    <section class="surface panel">
+        <h2 class="section-title">Siparis Ozeti</h2>
+        <div class="cluster">
+            <strong>@Model.OrderNumber</strong>
+            <span class="badge">@Model.Status</span>
+            <span class="badge">@Model.PaymentStatus</span>
+        </div>
+        <p class="text-muted">@Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p>
+        <div class="entries">
+            @foreach (var item in Model.Items)
+            {
+                <article class="entry">
+                    <strong>@item.ProductName</strong>
+                    <div class="text-muted">@item.Quantity adet x @item.UnitPrice.ToString("N2") TL</div>
+                    <div>@item.TotalPrice.ToString("N2") TL</div>
+                </article>
+            }
+        </div>
+    </section>
+
+    <div class="entries">
+        <section class="surface panel">
+            <h2 class="section-title">Odeme Durumu</h2>
+            <div>Toplam: @Model.TotalAmount.ToString("N2") TL</div>
+            <div>Odenen: @Model.PaidAmount.ToString("N2") TL</div>
+            <div>Kalan: @Model.OutstandingAmount.ToString("N2") TL</div>
+        </section>
+        <section class="surface panel">
+            <h2 class="section-title">Faturalar</h2>
+            @if (!Model.Invoices.Any())
+            {
+                <div class="empty-state">Henuz fatura olusturulmadi.</div>
+            }
+            else
+            {
+                <div class="entries">
+                    @foreach (var invoice in Model.Invoices)
+                    {
+                        <article class="entry">
+                            <strong>@invoice.InvoiceNumber</strong>
+                            <div class="text-muted">@invoice.InvoiceDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                            <a asp-action="DownloadInvoice" asp-route-invoiceId="@invoice.Id" class="btn btn-secondary">PDF Indir</a>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+        <section class="surface panel">
+            <h2 class="section-title">Gecmis ve Bildirimler</h2>
+            <div class="entries">
+                @foreach (var history in Model.HistoryEntries.Take(6))
+                {
+                    <article class="entry">
+                        <strong>@history.Title</strong>
+                        <div class="text-muted">@history.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                        <div>@history.Description</div>
+                    </article>
+                }
+                @foreach (var notification in Model.Notifications.Take(3))
+                {
+                    <article class="entry">
+                        <strong>@notification.Title</strong>
+                        <div class="text-muted">@notification.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                        <div>@notification.Message</div>
+                    </article>
+                }
+            </div>
+        </section>
+    </div>
+</div>

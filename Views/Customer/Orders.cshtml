@@ -1,0 +1,42 @@
+@model MGold.Controllers.CustomerPanelViewModel
+@{
+    ViewData["Title"] = "Siparislerim";
+    ViewData["PageDescription"] = "Tum siparislerinizi tek akista goruntuleyin ve detay ekranlarina gecin.";
+}
+
+@section Styles {
+    <style>
+        .orders { display: grid; gap: 14px; }
+        .order-card { padding: 20px; }
+        .order-card .items { margin-top: 10px; color: var(--muted); line-height: 1.6; }
+    </style>
+}
+
+<section class="orders">
+    @if (!Model.Orders.Any())
+    {
+        <div class="surface" style="padding:22px;">
+            <div class="empty-state">Henuz siparis gecmisiniz bulunmuyor.</div>
+        </div>
+    }
+    else
+    {
+        @foreach (var order in Model.Orders)
+        {
+            <article class="surface order-card">
+                <div class="cluster">
+                    <strong>@order.OrderNumber</strong>
+                    <span class="badge">@order.Status</span>
+                    <span class="badge">@order.PaymentStatus</span>
+                    <span class="text-muted">@order.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                </div>
+                <div style="margin-top:10px;">Toplam: @order.TotalAmount.ToString("N2") TL</div>
+                <div style="margin-top:4px;">Odenen: @order.PaidAmount.ToString("N2") TL</div>
+                <div class="items">@string.Join(", ", order.Items)</div>
+                <div style="margin-top:14px;">
+                    <a asp-action="OrderDetails" asp-route-id="@order.Id" class="btn btn-primary">Siparis Detayi</a>
+                </div>
+            </article>
+        }
+    }
+</section>

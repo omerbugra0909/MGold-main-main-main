@@ -1,0 +1,80 @@
+@model IReadOnlyList<MGold.Domain.Entities.AppUser>
+@{
+    var panelBase = User.IsInRole("SystemAdmin") ? "/admin" : "/owner";
+    ViewData["Title"] = "Kullanicilar";
+    ViewData["PageDescription"] = "Tum hesaplari, rollerini ve aktiflik durumlarini yonet.";
+}
+
+@if (TempData["Success"] is string ok && !string.IsNullOrWhiteSpace(ok))
+{
+    <div class="auth-note" style="margin-bottom:16px;">@ok</div>
+}
+@if (TempData["Error"] is string error && !string.IsNullOrWhiteSpace(error))
+{
+    <div class="auth-errors" style="margin-bottom:16px;">@error</div>
+}
+
+<section class="surface surface-inner">
+    <h2 class="section-title">Hesap Yonetimi</h2>
+    <p class="section-copy">Firma kullanicilarinin rol ve durum bilgilerini burada degistirebilirsin.</p>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state" style="margin-top:16px;">Kullanici bulunmuyor.</div>
+    }
+    else
+    {
+        <div class="data-table-wrap" style="margin-top:16px;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Kullanici</th>
+                        <th>Iletisim</th>
+                        <th>Musteri</th>
+                        <th>Rol / Durum</th>
+                        <th>Kayit</th>
+                        <th>Yonet</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@user.FullName</strong>
+                                <div class="text-muted">@user.Username</div>
+                            </td>
+                            <td>
+                                <div>@user.Email</div>
+                                <div class="text-muted">@user.Phone</div>
+                            </td>
+                            <td>@(user.Customer?.Name ?? "-")</td>
+                            <td>
+                                <span class="badge">@user.Role</span>
+                                <div class="text-muted">@(user.IsActive ? "Aktif" : "Pasif")</div>
+                            </td>
+                            <td>@user.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>
+                                <form method="post" action="@($"{panelBase}/users/update")" class="stack">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@user.Id" />
+                                    <select name="role">
+                                        @foreach (var role in MGold.Domain.Constants.RoleConstants.All)
+                                        {
+                                            <option value="@role" selected="@(role == user.Role)">@role</option>
+                                        }
+                                    </select>
+                                    <label class="cluster" style="justify-content:flex-start;">
+                                        <input type="checkbox" name="isActive" value="true" checked="@user.IsActive" style="width:auto;" />
+                                        <span>Aktif</span>
+                                    </label>
+                                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

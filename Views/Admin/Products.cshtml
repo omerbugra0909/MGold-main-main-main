@@ -1,0 +1,374 @@
+@model MGold.Controllers.AdminProductsPageViewModel
+@{
+    var panelBase = User.IsInRole("SystemAdmin") ? "/admin" : "/owner";
+    ViewData["Title"] = "Urunler";
+    ViewData["PageDescription"] = "Urun ekleme, duzenleme, silme ve stok alanlarini diger modullerden ayrilmis temiz bir panelde yonet.";
+}
+
+@section Styles {
+    <style>
+        .products-layout {
+            display: grid;
+            grid-template-columns: 380px minmax(0, 1fr);
+            gap: 18px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .field {
+            display: grid;
+            gap: 7px;
+        }
+        .field span {
+            font-size: 13px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .full { grid-column: 1 / -1; }
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .message {
+            padding: 12px 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            margin-bottom: 14px;
+        }
+        .message-success {
+            color: #20563f;
+            background: rgba(208, 244, 228, 0.9);
+            border: 1px solid rgba(45, 122, 87, 0.18);
+        }
+        .message-error {
+            color: #8f3030;
+            background: rgba(255, 236, 236, 0.92);
+            border: 1px solid rgba(183, 71, 71, 0.18);
+        }
+        .overlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(10, 14, 22, 0.62);
+            backdrop-filter: blur(10px);
+            z-index: 50;
+        }
+        .overlay.is-open { display: flex; }
+        .modal-card {
+            width: min(780px, 100%);
+            max-height: 92vh;
+            overflow: auto;
+            padding: 22px;
+            border-radius: 28px;
+            background: var(--panel-strong);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+        }
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .modal-head h3 {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 28px;
+        }
+        .modal-head p {
+            margin: 6px 0 0;
+            color: var(--muted);
+        }
+        .icon-btn {
+            width: 44px;
+            height: 44px;
+            border: 1px solid rgba(124, 167, 255, 0.12);
+            border-radius: 14px;
+            background: rgba(12, 18, 28, 0.88);
+            color: #eaf2ff;
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        @@media (max-width: 1100px) {
+            .products-layout { grid-template-columns: 1fr; }
+        }
+        @@media (max-width: 760px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .toolbar { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+}
+
+@if (TempData["Success"] is string ok && !string.IsNullOrWhiteSpace(ok))
+{
+    <div class="message message-success">@ok</div>
+}
+@if (TempData["Error"] is string error && !string.IsNullOrWhiteSpace(error))
+{
+    <div class="message message-error">@error</div>
+}
+
+<div class="products-layout">
+    <section class="surface surface-inner">
+        <h2 class="section-title">Yeni Urun Ekle</h2>
+        <p class="section-copy">Urun yonetimi artik ayri moduldedir; bu sayfa sadece urun operasyonlari icin ayrildi.</p>
+
+        <form method="post" action="@($"{panelBase}/products/create")" class="form-grid" style="margin-top:16px;">
+            @Html.AntiForgeryToken()
+            <label class="field full">
+                <span>Urun Adi</span>
+                <input name="Name" required maxlength="120" />
+            </label>
+            <label class="field">
+                <span>Tip</span>
+                <select name="Type" asp-items="Html.GetEnumSelectList<MGold.Domain.Enums.ProductType>()"></select>
+            </label>
+            @if (User.IsInRole("SystemAdmin"))
+            {
+                <label class="field">
+                    <span>Firma</span>
+                    <select name="CompanyId" required>
+                        <option value="">Firma secin</option>
+                        @foreach (var company in Model.Companies)
+                        {
+                            <option value="@company.Id">@company.Name</option>
+                        }
+                    </select>
+                </label>
+            }
+            <label class="field">
+                <span>Agirlik (gr)</span>
+                <input name="Weight" type="number" step="0.001" />
+            </label>
+            <label class="field">
+                <span>Saflik</span>
+                <input name="PurityRate" type="number" step="0.0001" value="1" />
+            </label>
+            <label class="field">
+                <span>Iscilik Tutar</span>
+                <input name="LaborCost" type="number" step="0.01" />
+            </label>
+            <label class="field">
+                <span>Iscilik %</span>
+                <input name="LaborCostPercentage" type="number" step="0.01" />
+            </label>
+            <label class="field">
+                <span>Ek Maliyet</span>
+                <input name="AdditionalCost" type="number" step="0.01" />
+            </label>
+            <label class="field">
+                <span>Kar Marji %</span>
+                <input name="ProfitMarginPercentage" type="number" step="0.01" />
+            </label>
+            <label class="field">
+                <span>Alis Fiyati</span>
+                <input name="PurchasePrice" type="number" step="0.01" />
+            </label>
+            <label class="field">
+                <span>Satis Fiyati</span>
+                <input name="SalePrice" type="number" step="0.01" />
+            </label>
+            <label class="field full">
+                <span>Stok</span>
+                <input name="StockQuantity" type="number" />
+            </label>
+            <div class="actions full">
+                <button type="submit" class="btn btn-primary">Urun Ekle</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="surface surface-inner">
+        <div class="toolbar">
+            <div>
+                <h2 class="section-title">Urun Listesi</h2>
+                <p class="section-copy">@Model.Products.Count urun tek modulde duzenli sekilde yonetiliyor.</p>
+            </div>
+            <a class="btn btn-secondary" href="@panelBase">Dashboard'a Don</a>
+        </div>
+
+        @if (!Model.Products.Any())
+        {
+            <div class="empty-state">Henuz urun kaydi bulunmuyor.</div>
+        }
+        else
+        {
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Urun</th>
+                            <th>Tip</th>
+                            @if (User.IsInRole("SystemAdmin"))
+                            {
+                                <th>Firma</th>
+                            }
+                            <th>Stok</th>
+                            <th>Satis</th>
+                            <th>Tarih</th>
+                            <th>Islem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Products)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@item.Name</strong>
+                                    <div class="text-muted">@item.Weight.ToString("N3") gr</div>
+                                </td>
+                                <td><span class="badge">@item.Type</span></td>
+                                @if (User.IsInRole("SystemAdmin"))
+                                {
+                                    <td>@(item.Company?.Name ?? "Firma baglantisi yok")</td>
+                                }
+                                <td>@item.StockQuantity</td>
+                                <td>@item.SalePrice.ToString("N2") TL</td>
+                                <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>
+                                    <div class="actions">
+                                        <button class="btn btn-secondary edit-trigger"
+                                                type="button"
+                                                data-id="@item.Id"
+                                                data-name="@item.Name"
+                                                data-type="@((int)item.Type)"
+                                                data-weight="@item.Weight.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-purity="@item.PurityRate.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-laborcost="@item.LaborCost.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-laborpercentage="@item.LaborCostPercentage.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-additionalcost="@item.AdditionalCost.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-profit="@item.ProfitMarginPercentage.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-purchase="@item.PurchasePrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-sale="@item.SalePrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-stock="@item.StockQuantity">
+                                            Duzenle
+                                        </button>
+                                        <form method="post" action="@($"{panelBase}/products/delete")">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@item.Id" />
+                                            <button class="btn btn-danger" type="submit">Sil</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+<section id="editOverlay" class="overlay">
+    <article class="modal-card">
+        <div class="modal-head">
+            <div>
+                <h3>Urunu Duzenle</h3>
+                <p>Secili urunu bu panelde guncelle.</p>
+            </div>
+            <button id="closeEditPanel" class="icon-btn" type="button" aria-label="Duzenleme panelini kapat">×</button>
+        </div>
+
+        <form method="post" action="@($"{panelBase}/products/update")" class="form-grid">
+            @Html.AntiForgeryToken()
+            <input id="edit-id" name="Id" type="hidden" />
+            <label class="field full">
+                <span>Urun Adi</span>
+                <input id="edit-name" name="Name" required maxlength="120" />
+            </label>
+            <label class="field">
+                <span>Tip</span>
+                <select id="edit-type" name="Type" asp-items="Html.GetEnumSelectList<MGold.Domain.Enums.ProductType>()"></select>
+            </label>
+            <label class="field">
+                <span>Agirlik (gr)</span>
+                <input id="edit-weight" name="Weight" type="number" step="0.001" />
+            </label>
+            <label class="field">
+                <span>Saflik</span>
+                <input id="edit-purity" name="PurityRate" type="number" step="0.0001" />
+            </label>
+            <label class="field">
+                <span>Iscilik Tutar</span>
+                <input id="edit-laborcost" name="LaborCost" type="number" step="0.01" />
+            </label>
+            <label class="field">
+                <span>Iscilik %</span>
+                <input id="edit-laborpercentage" name="LaborCostPercentage" type="number" step="0.01" />
+            </label>
+            <label class="field">
+                <span>Ek Maliyet</span>
+                <input id="edit-additionalcost" name="AdditionalCost" type="number" step="0.01" />
+            </label>
+            <label class="field">
+                <span>Kar Marji %</span>
+                <input id="edit-profit" name="ProfitMarginPercentage" type="number" step="0.01" />
+            </label>
+            <label class="field">
+                <span>Alis Fiyati</span>
+                <input id="edit-purchase" name="PurchasePrice" type="number" step="0.01" />
+            </label>
+            <label class="field">
+                <span>Satis Fiyati</span>
+                <input id="edit-sale" name="SalePrice" type="number" step="0.01" />
+            </label>
+            <label class="field full">
+                <span>Stok</span>
+                <input id="edit-stock" name="StockQuantity" type="number" />
+            </label>
+            <div class="actions full">
+                <button class="btn btn-primary" type="submit">Degisiklikleri Kaydet</button>
+                <button id="cancelEditPanel" class="btn btn-secondary" type="button">Vazgec</button>
+            </div>
+        </form>
+    </article>
+</section>
+
+@section Scripts {
+    <script>
+        const editOverlay = document.getElementById("editOverlay");
+        const openOverlay = (overlay) => overlay?.classList.add("is-open");
+        const closeOverlay = (overlay) => overlay?.classList.remove("is-open");
+
+        document.querySelectorAll(".edit-trigger").forEach((button) => {
+            button.addEventListener("click", () => {
+                document.getElementById("edit-id").value = button.dataset.id ?? "";
+                document.getElementById("edit-name").value = button.dataset.name ?? "";
+                document.getElementById("edit-type").value = button.dataset.type ?? "0";
+                document.getElementById("edit-weight").value = button.dataset.weight ?? "0";
+                document.getElementById("edit-purity").value = button.dataset.purity ?? "1";
+                document.getElementById("edit-laborcost").value = button.dataset.laborcost ?? "0";
+                document.getElementById("edit-laborpercentage").value = button.dataset.laborpercentage ?? "0";
+                document.getElementById("edit-additionalcost").value = button.dataset.additionalcost ?? "0";
+                document.getElementById("edit-profit").value = button.dataset.profit ?? "0";
+                document.getElementById("edit-purchase").value = button.dataset.purchase ?? "0";
+                document.getElementById("edit-sale").value = button.dataset.sale ?? "0";
+                document.getElementById("edit-stock").value = button.dataset.stock ?? "0";
+                openOverlay(editOverlay);
+            });
+        });
+
+        document.getElementById("closeEditPanel")?.addEventListener("click", () => closeOverlay(editOverlay));
+        document.getElementById("cancelEditPanel")?.addEventListener("click", () => closeOverlay(editOverlay));
+
+        editOverlay?.addEventListener("click", (event) => {
+            if (event.target === editOverlay) {
+                closeOverlay(editOverlay);
+            }
+        });
+    </script>
+}

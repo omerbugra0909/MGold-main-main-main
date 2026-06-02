@@ -1,0 +1,64 @@
+@{
+    var mode = ViewData["BrandMarkMode"]?.ToString() ?? "compact";
+    var title = ViewData["BrandMarkTitle"]?.ToString() ?? "MGold";
+    var subtitle = ViewData["BrandMarkSubtitle"]?.ToString() ?? "Premium Motion Signature";
+    var shellClass = mode == "hero" ? "brand-scene brand-scene-hero" : "brand-scene brand-scene-compact";
+}
+
+<div class="@shellClass" data-coin-scene aria-hidden="true">
+    <div class="brand-scene-core">
+        <div class="brand-coin-aura"></div>
+        <div class="brand-orbit brand-orbit-silver"></div>
+        <div class="brand-orbit brand-orbit-copper"></div>
+        <div class="brand-orbit brand-orbit-gem"></div>
+        <div class="brand-glow-ring brand-glow-ring-outer"></div>
+        <div class="brand-glow-ring brand-glow-ring-inner"></div>
+
+        <div class="brand-coin-stage">
+            <div class="brand-coin-shadow"></div>
+            <div class="brand-coin-motion">
+                <div class="brand-coin" data-coin-body>
+                    <div class="brand-coin-side"></div>
+
+                    <div class="brand-coin-face brand-coin-front">
+                        <div class="brand-coin-face-sheen"></div>
+                        <div class="brand-coin-rim brand-coin-rim-outer"></div>
+                        <div class="brand-coin-rim brand-coin-rim-inner"></div>
+                        <div class="brand-coin-etch brand-coin-etch-a"></div>
+                        <div class="brand-coin-etch brand-coin-etch-b"></div>
+                        <div class="brand-coin-center">
+                            <div class="brand-coin-engrave">@title</div>
+                        </div>
+                        <div class="brand-coin-glyph brand-coin-glyph-top"></div>
+                        <div class="brand-coin-glyph brand-coin-glyph-bottom"></div>
+                    </div>
+
+                    <div class="brand-coin-face brand-coin-back">
+                        <div class="brand-coin-face-sheen"></div>
+                        <div class="brand-coin-rim brand-coin-rim-outer"></div>
+                        <div class="brand-coin-rim brand-coin-rim-inner"></div>
+                        <div class="brand-coin-insignia"></div>
+                        <div class="brand-coin-back-grid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="brand-particle brand-particle-diamond"></div>
+        <div class="brand-particle brand-particle-silver"></div>
+        <div class="brand-particle brand-particle-copper"></div>
+        <div class="brand-particle brand-particle-gold"></div>
+        <div class="brand-particle brand-particle-ruby"></div>
+        <div class="brand-particle brand-particle-emerald"></div>
+    </div>
+
+    @if (mode == "hero")
+    {
+        <div class="brand-scene-copy">
+            <span class="brand-scene-kicker">Luxury Motion System</span>
+            <strong>@title</strong>
+            <span>@subtitle</span>
+            <em>Dokunup cevirin</em>
+        </div>
+    }
+</div>

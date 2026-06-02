@@ -1,0 +1,414 @@
+@using System.Text.Json
+@model MGold.Controllers.AdminDashboardViewModel
+@{
+    var isSystemAdmin = User.IsInRole("SystemAdmin");
+    ViewData["Title"] = isSystemAdmin ? "Admin Dashboard" : "Firma Dashboard";
+    ViewData["PageDescription"] = isSystemAdmin
+        ? "Tum firmalara ait isletme analizi, siparis yogunlugu ve operasyon performansi tek panelde."
+        : "Bagli firmaya ait isletme analizi, siparis yogunlugu ve operasyon performansi tek panelde.";
+}
+
+@section Styles {
+    <style>
+        .dash-shell, .dash-hero, .dash-filters, .dash-kpis, .dash-grid, .dash-chart-grid, .dash-list-grid { display:grid; gap:18px; }
+        .dash-hero { grid-template-columns: 1.15fr .85fr; padding:24px; }
+        .dash-hero h2 { margin:10px 0 0; font-family:"Cinzel", serif; font-size:clamp(34px, 4.2vw, 54px); line-height:1.02; }
+        .dash-hero p { margin:14px 0 0; color:var(--muted); line-height:1.72; max-width:720px; }
+        .dash-filters { grid-template-columns: 220px 180px 180px auto auto; align-items:end; }
+        .dash-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+        .dash-card, .dash-panel { padding:22px; }
+        .dash-card strong, .dash-panel strong.section-kicker { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.12em; }
+        .dash-card span { display:block; margin-top:12px; font-size:30px; font-weight:800; color:var(--gold-0); }
+        .dash-grid { grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr); }
+        .dash-chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dash-list-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dash-panel h3 { margin:12px 0 0; font-family:"Cinzel", serif; font-size:24px; }
+        .dash-panel p { margin:12px 0 0; color:var(--muted); line-height:1.68; }
+        .chart-stage { margin-top:18px; position:relative; }
+        .chart-host { width:100%; min-height:280px; border-radius:22px; background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)); border:1px solid rgba(255,255,255,.05); padding:16px; position:relative; overflow:hidden; }
+        .chart-host svg { width:100%; height:280px; display:block; }
+        .chart-grid-lines line { stroke: rgba(255,255,255,.06); stroke-dasharray:4 8; }
+        .chart-axis text { fill: rgba(243, 236, 223, 0.58); font-size: 11px; }
+        .chart-tooltip { position:absolute; pointer-events:none; transform:translate(-50%, calc(-100% - 12px)); background:rgba(8,10,14,.96); border:1px solid rgba(199,155,83,.22); color:var(--ink); border-radius:14px; padding:10px 12px; min-width:120px; box-shadow:0 20px 60px rgba(0,0,0,.32); opacity:0; transition:opacity .16s ease; z-index:2; }
+        .chart-tooltip.is-visible { opacity:1; }
+        .chart-legend { margin-top:14px; display:flex; gap:12px; flex-wrap:wrap; }
+        .chart-legend-item { display:inline-flex; align-items:center; gap:8px; color:var(--muted); font-size:12px; }
+        .chart-legend-swatch { width:10px; height:10px; border-radius:50%; }
+        .breakdown-list { margin-top:18px; display:grid; gap:12px; }
+        .breakdown-item { padding:14px 16px; border-radius:18px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); }
+        .breakdown-item-head { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+        .breakdown-item strong { color:var(--ink); font-size:15px; }
+        .breakdown-item span { color:var(--gold-0); font-weight:800; }
+        .breakdown-bar { height:8px; margin-top:12px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,.06); }
+        .breakdown-bar i { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg, rgba(227,201,145,.95), rgba(143,99,43,.85)); }
+        .breakdown-item small { display:block; margin-top:10px; color:var(--muted); line-height:1.55; }
+        .dash-side-list .entry { padding:16px 18px; border-radius:18px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); }
+        .dash-side-list .entry + .entry { margin-top:12px; }
+        .live-pill { display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:999px; background:rgba(129,212,161,.12); color:#81d4a1; border:1px solid rgba(129,212,161,.18); font-size:12px; font-weight:700; }
+        .live-pill i { width:8px; height:8px; border-radius:50%; background:currentColor; box-shadow:0 0 0 0 rgba(129,212,161,.45); animation: dashPulse 2s infinite; }
+        @@keyframes dashPulse { 0% { box-shadow:0 0 0 0 rgba(129,212,161,.45);} 70% { box-shadow:0 0 0 10px rgba(129,212,161,0);} 100% { box-shadow:0 0 0 0 rgba(129,212,161,0);} }
+        @@media (max-width: 1260px) {
+            .dash-kpis, .dash-chart-grid, .dash-list-grid, .dash-grid, .dash-hero { grid-template-columns:1fr; }
+            .dash-filters { grid-template-columns:1fr 1fr; }
+        }
+        @@media (max-width: 760px) {
+            .dash-filters { grid-template-columns:1fr; }
+            .dash-kpis { grid-template-columns:1fr; }
+        }
+    </style>
+}
+
+<div class="dash-shell"
+     id="analyticsBoard"
+     data-api-url="@Model.DashboardApiUrl"
+     data-initial="@Model.InitialAnalyticsJson">
+    <section class="surface dash-hero">
+        <div>
+            <span class="badge">Enterprise Analytics</span>
+            <h2>@(isSystemAdmin ? "Admin paneli tum sistemi kapsayan analiz motoru gibi calisiyor." : "Firma paneli gercek isletme kararlarini hizlandiran analiz motoru gibi calisiyor.")</h2>
+            <p>@(isSystemAdmin ? "Siparis yogunlugu, donemsel finansal performans, urun ivmesi, ekip verimi ve musteri davranisi tum firmalar icin ayni karar ekraninda toplanir." : "Siparis yogunlugu, donemsel finansal performans, urun ivmesi, calisan gorev verimi ve musteri davranisi sadece bu firmaya ait karar ekraninda toplanir.") Tarih araligi degistikce tum grafik katmani yeniden hesaplanir.</p>
+        </div>
+        <div>
+            <div class="live-pill"><i></i> Canli yenileme aktif <span id="dashGeneratedAt">@Model.Analytics.GeneratedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</span></div>
+            <div class="dash-kpis" style="grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:18px;">
+                <article class="surface dash-card"><strong>Gelir</strong><span>@Model.TotalRevenue.ToString("N0") TL</span></article>
+                <article class="surface dash-card"><strong>Net Kar</strong><span>@Model.NetProfit.ToString("N0") TL</span></article>
+                <article class="surface dash-card"><strong>Siparis</strong><span>@Model.TotalOrders</span></article>
+                <article class="surface dash-card"><strong>Bekleyen Gorev</strong><span>@Model.Analytics.PendingTasks</span></article>
+            </div>
+        </div>
+    </section>
+
+    <section class="surface dash-panel">
+        <strong class="section-kicker">Filter Engine</strong>
+        <h3>Tarih Araligi ve Canli Analiz Kontrolleri</h3>
+        <div class="dash-filters" style="margin-top:18px;">
+            <label>
+                Donem
+                <select id="dashPreset"></select>
+            </label>
+            <label>
+                Baslangic
+                <input type="date" id="dashStartDate" />
+            </label>
+            <label>
+                Bitis
+                <input type="date" id="dashEndDate" />
+            </label>
+            <button type="button" class="btn btn-primary" id="dashApplyBtn">Analizi Uygula</button>
+            <button type="button" class="btn btn-secondary" id="dashRefreshBtn">Canli Yenile</button>
+        </div>
+    </section>
+
+    <section class="dash-kpis" id="dashKpiGrid"></section>
+
+    <section class="dash-grid">
+        <div class="dash-chart-grid">
+            <article class="surface dash-panel">
+                <strong class="section-kicker">Order Trends</strong>
+                <h3>Gunluk / Haftalik Siparis Yogunlugu</h3>
+                <p>En yogun siparis gunlerini ve daralma/doygunluk anlarini izleyin.</p>
+                <div class="chart-stage">
+                    <div class="chart-host" id="chartDaily"></div>
+                    <div class="chart-tooltip" id="tooltipDaily"></div>
+                </div>
+                <div class="chart-stage">
+                    <div class="chart-host" id="chartWeekly"></div>
+                    <div class="chart-tooltip" id="tooltipWeekly"></div>
+                </div>
+            </article>
+
+            <article class="surface dash-panel">
+                <strong class="section-kicker">Financial Core</strong>
+                <h3>Gelir, Gider ve Net Kar</h3>
+                <p>Finansal akisinizi sadece rakam degil trend davranisi olarak gorun.</p>
+                <div class="chart-stage">
+                    <div class="chart-host" id="chartRevenueExpense"></div>
+                    <div class="chart-tooltip" id="tooltipRevenueExpense"></div>
+                </div>
+                <div class="chart-stage">
+                    <div class="chart-host" id="chartProfit"></div>
+                    <div class="chart-tooltip" id="tooltipProfit"></div>
+                </div>
+            </article>
+
+            <article class="surface dash-panel">
+                <strong class="section-kicker">Demand Cycles</strong>
+                <h3>Aylik / Yillik Siparis Davranisi</h3>
+                <p>Donemsel buyume egilimini ve yil icindeki siparis mevsimselligini takip edin.</p>
+                <div class="chart-stage">
+                    <div class="chart-host" id="chartMonthly"></div>
+                    <div class="chart-tooltip" id="tooltipMonthly"></div>
+                </div>
+                <div class="chart-stage">
+                    <div class="chart-host" id="chartYearly"></div>
+                    <div class="chart-tooltip" id="tooltipYearly"></div>
+                </div>
+            </article>
+
+            <article class="surface dash-panel">
+                <strong class="section-kicker">Customer Rhythm</strong>
+                <h3>Saatlik ve Donemsel Kullanim</h3>
+                <p>Musterilerin en cok hangi saat ve gunlerde aksiyon aldigini analiz edin.</p>
+                <div class="chart-stage">
+                    <div class="chart-host" id="chartCustomerHours"></div>
+                    <div class="chart-tooltip" id="tooltipCustomerHours"></div>
+                </div>
+                <div class="chart-stage">
+                    <div class="chart-host" id="chartCustomerPeriods"></div>
+                    <div class="chart-tooltip" id="tooltipCustomerPeriods"></div>
+                </div>
+            </article>
+        </div>
+
+        <div class="dash-side-list">
+            <article class="surface dash-panel">
+                <strong class="section-kicker">Operational Snapshot</strong>
+                <h3>Canli KPI Yorumlari</h3>
+                <div class="breakdown-list" id="dashKpiNarrative"></div>
+            </article>
+
+            <article class="surface dash-panel" style="margin-top:18px;">
+                <strong class="section-kicker">Market Pulse</strong>
+                <h3>Piyasa Etkisi</h3>
+                @foreach (var item in Model.MarketHighlights)
+                {
+                    <article class="entry">
+                        <div class="cluster">
+                            <strong>@item.Symbol</strong>
+                            <span class="badge">@item.Change24hPercent.ToString("N2")%</span>
+                        </div>
+                        <div class="text-muted" style="margin-top:8px;">@item.DisplayName</div>
+                        <div style="margin-top:8px;">@item.Price.ToString("N2") @item.DisplayCurrency</div>
+                    </article>
+                }
+            </article>
+
+            <article class="surface dash-panel" style="margin-top:18px;">
+                <strong class="section-kicker">Recent Operations</strong>
+                <h3>Son Siparisler ve Aktiviteler</h3>
+                @foreach (var order in Model.RecentOrders)
+                {
+                    <article class="entry">
+                        <div class="cluster">
+                            <strong>@order.OrderNumber</strong>
+                            <span class="badge">@order.Status</span>
+                        </div>
+                        <div class="text-muted" style="margin-top:8px;">@order.CustomerName • @order.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                        <div style="margin-top:8px;">@order.TotalAmount.ToString("N2") TL</div>
+                    </article>
+                }
+            </article>
+        </div>
+    </section>
+
+    <section class="dash-list-grid">
+        <article class="surface dash-panel">
+            <strong class="section-kicker">Product Intelligence</strong>
+            <h3>Urun Performansi ve Stok Tuketimi</h3>
+            <div id="breakdownProductsTop"></div>
+            <div id="breakdownProductsLow" style="margin-top:18px;"></div>
+            <div id="breakdownProductsBurn" style="margin-top:18px;"></div>
+            <div id="breakdownProductsCategory" style="margin-top:18px;"></div>
+        </article>
+
+        <article class="surface dash-panel">
+            <strong class="section-kicker">Workforce Intelligence</strong>
+            <h3>Gorev Durumu ve Calisan Is Yukleri</h3>
+            <div id="breakdownTaskStatus"></div>
+            <div id="breakdownTaskPerformance" style="margin-top:18px;"></div>
+            <div id="breakdownTaskWorkload" style="margin-top:18px;"></div>
+        </article>
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const board = document.getElementById("analyticsBoard");
+            if (!board) return;
+
+            const apiUrl = board.dataset.apiUrl;
+            let dashboard = JSON.parse(board.dataset.initial || "{}");
+
+            const els = {
+                preset: document.getElementById("dashPreset"),
+                start: document.getElementById("dashStartDate"),
+                end: document.getElementById("dashEndDate"),
+                apply: document.getElementById("dashApplyBtn"),
+                refresh: document.getElementById("dashRefreshBtn"),
+                generatedAt: document.getElementById("dashGeneratedAt"),
+                kpis: document.getElementById("dashKpiGrid"),
+                narrative: document.getElementById("dashKpiNarrative")
+            };
+
+            const fmtCurrency = (v) => `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 }).format(v)} TL`;
+            const fmtNumber = (v) => new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 }).format(v);
+            const formatValue = (value, suffix) => suffix?.includes("TL") ? fmtCurrency(value) : `${fmtNumber(value)}${suffix ?? ""}`;
+            const toDateInput = (v) => new Date(v).toISOString().slice(0, 10);
+            const escapeHtml = (value) => String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+
+            const setFilterUi = () => {
+                const filter = dashboard.analytics.filter;
+                els.preset.innerHTML = filter.availablePresets.map(option => `<option value="${escapeHtml(option.value)}" ${option.value === filter.preset ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("");
+                els.start.value = toDateInput(filter.startDate);
+                els.end.value = toDateInput(filter.endDate);
+                els.generatedAt.textContent = new Date(dashboard.generatedAt).toLocaleString("tr-TR");
+            };
+
+            const renderKpis = () => {
+                const k = dashboard.analytics.kpis;
+                els.kpis.innerHTML = `
+                    <article class="surface dash-card"><strong>Gelir</strong><span>${fmtCurrency(k.revenue)}</span></article>
+                    <article class="surface dash-card"><strong>Gider</strong><span>${fmtCurrency(k.expense)}</span></article>
+                    <article class="surface dash-card"><strong>Net Kar</strong><span>${fmtCurrency(k.netProfit)}</span></article>
+                    <article class="surface dash-card"><strong>Ortalama Sepet</strong><span>${fmtCurrency(k.averageOrderValue)}</span></article>
+                    <article class="surface dash-card"><strong>Siparis Adedi</strong><span>${fmtNumber(k.orderCount)}</span></article>
+                    <article class="surface dash-card"><strong>En Yogun Saat</strong><span>${escapeHtml(k.busyHourLabel)}</span></article>
+                `;
+                els.narrative.innerHTML = `
+                    <article class="breakdown-item"><div class="breakdown-item-head"><strong>Kar Marji Sinyali</strong><span>${k.expense === 0 ? "0%" : ((k.netProfit / Math.max(k.revenue, 1)) * 100).toFixed(1)}%</span></div><small>Gelir ve gider dengesine gore donemsel net kar performansi.</small></article>
+                    <article class="breakdown-item"><div class="breakdown-item-head"><strong>Operasyon Ritmi</strong><span>${fmtNumber(k.orderCount)} siparis</span></div><small>Secili aralikta uretilen toplam siparis hacmi ve ekip temposu.</small></article>
+                    <article class="breakdown-item"><div class="breakdown-item-head"><strong>Tamamlanan Gorev</strong><span>${fmtNumber(k.completedTaskCount)}</span></div><small>Ekip tarafinda sonuclandirilan gorev hacmi.</small></article>
+                `;
+            };
+
+            const buildLineChart = (hostId, tooltipId, chart) => {
+                const host = document.getElementById(hostId);
+                const tooltip = document.getElementById(tooltipId);
+                if (!host || !chart) return;
+                const width = 720, height = 280, padX = 42, padY = 20;
+                const allPoints = chart.series.flatMap(series => series.points);
+                const max = Math.max(...allPoints.map(p => Number(p.value)), 1);
+                const min = Math.min(...allPoints.map(p => Number(p.value)), 0);
+                const range = Math.max(max - min, 1);
+                const usableW = width - padX * 2;
+                const usableH = height - padY * 2;
+
+                const lines = Array.from({ length: 4 }, (_, index) => {
+                    const y = padY + (usableH / 3) * index;
+                    return `<line x1="${padX}" y1="${y}" x2="${width - padX}" y2="${y}"></line>`;
+                }).join("");
+
+                const seriesMarkup = chart.series.map(series => {
+                    const pts = series.points.map((point, index) => {
+                        const x = padX + (usableW / Math.max(series.points.length - 1, 1)) * index;
+                        const y = height - padY - ((Number(point.value) - min) / range) * usableH;
+                        return { x, y, point };
+                    });
+                    const polyline = pts.map(p => `${p.x},${p.y}`).join(" ");
+                    const dots = pts.map(p => `<circle class="data-dot" cx="${p.x}" cy="${p.y}" r="4.5" fill="${escapeHtml(series.color)}" data-label="${escapeHtml(p.point.label)}" data-value="${Number(p.point.value)}" data-suffix="${escapeHtml(chart.valueSuffix)}" />`).join("");
+                    return `<polyline fill="none" stroke="${escapeHtml(series.color)}" stroke-width="3.2" points="${polyline}" stroke-linecap="round" stroke-linejoin="round"></polyline>${dots}`;
+                }).join("");
+
+                const axisLabels = (chart.series[0]?.points ?? []).map((point, index, arr) => {
+                    const x = padX + (usableW / Math.max(arr.length - 1, 1)) * index;
+                    return `<text x="${x}" y="${height - 4}" text-anchor="middle">${escapeHtml(point.label)}</text>`;
+                }).join("");
+
+                host.innerHTML = `
+                    <div class="text-muted" style="margin-bottom:10px;">${escapeHtml(chart.title)}</div>
+                    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+                        <g class="chart-grid-lines">${lines}</g>
+                        ${seriesMarkup}
+                        <g class="chart-axis">${axisLabels}</g>
+                    </svg>
+                    <div class="chart-legend">
+                        ${chart.series.map(s => `<span class="chart-legend-item"><i class="chart-legend-swatch" style="background:${escapeHtml(s.color)}"></i>${escapeHtml(s.label)}</span>`).join("")}
+                    </div>`;
+
+                host.querySelectorAll(".data-dot").forEach(dot => {
+                    dot.addEventListener("mouseenter", () => {
+                        tooltip.classList.add("is-visible");
+                        tooltip.innerHTML = `<strong>${escapeHtml(dot.dataset.label)}</strong><div style="margin-top:6px;">${escapeHtml(formatValue(Number(dot.dataset.value), dot.dataset.suffix))}</div>`;
+                    });
+                    dot.addEventListener("mousemove", (event) => {
+                        const rect = host.getBoundingClientRect();
+                        tooltip.style.left = `${event.clientX - rect.left}px`;
+                        tooltip.style.top = `${event.clientY - rect.top}px`;
+                    });
+                    dot.addEventListener("mouseleave", () => tooltip.classList.remove("is-visible"));
+                });
+            };
+
+            const buildBreakdown = (targetId, chart) => {
+                const target = document.getElementById(targetId);
+                if (!target || !chart) return;
+                const max = Math.max(...chart.items.map(x => Number(x.value)), 1);
+                target.innerHTML = `
+                    <div class="text-muted" style="margin-top:18px;">${escapeHtml(chart.title)}</div>
+                    <div class="breakdown-list">
+                        ${chart.items.map(item => `
+                            <article class="breakdown-item">
+                                <div class="breakdown-item-head">
+                                    <strong>${escapeHtml(item.label)}</strong>
+                                    <span>${escapeHtml(formatValue(Number(item.value), chart.valueSuffix))}</span>
+                                </div>
+                                <div class="breakdown-bar"><i style="width:${Math.max((Number(item.value) / max) * 100, 4)}%"></i></div>
+                                <small>${escapeHtml(item.detail ?? "")}</small>
+                            </article>`).join("")}
+                    </div>`;
+            };
+
+            const renderCharts = () => {
+                buildLineChart("chartDaily", "tooltipDaily", dashboard.analytics.trends.dailyOrders);
+                buildLineChart("chartWeekly", "tooltipWeekly", dashboard.analytics.trends.weeklyOrders);
+                buildLineChart("chartRevenueExpense", "tooltipRevenueExpense", dashboard.analytics.financial.revenueVsExpense);
+                buildLineChart("chartProfit", "tooltipProfit", dashboard.analytics.financial.netProfitTrend);
+                buildLineChart("chartMonthly", "tooltipMonthly", dashboard.analytics.trends.monthlyOrders);
+                buildLineChart("chartYearly", "tooltipYearly", dashboard.analytics.trends.yearlyOrders);
+                buildLineChart("chartCustomerHours", "tooltipCustomerHours", dashboard.analytics.trends.customerHours);
+                buildLineChart("chartCustomerPeriods", "tooltipCustomerPeriods", dashboard.analytics.trends.customerPeriods);
+
+                buildBreakdown("breakdownProductsTop", dashboard.analytics.products.topOrderedProducts);
+                buildBreakdown("breakdownProductsLow", dashboard.analytics.products.lowPerformingProducts);
+                buildBreakdown("breakdownProductsBurn", dashboard.analytics.products.stockBurnRate);
+                buildBreakdown("breakdownProductsCategory", dashboard.analytics.products.categoryPerformance);
+                buildBreakdown("breakdownTaskStatus", dashboard.analytics.workforce.taskStatusDistribution);
+                buildBreakdown("breakdownTaskPerformance", dashboard.analytics.workforce.employeeTaskPerformance);
+                buildBreakdown("breakdownTaskWorkload", dashboard.analytics.workforce.employeeOrderWorkload);
+            };
+
+            const refreshAnalytics = async () => {
+                const url = new URL(apiUrl, window.location.origin);
+                url.searchParams.set("rangePreset", els.preset.value);
+                url.searchParams.set("startDate", els.start.value);
+                url.searchParams.set("endDate", els.end.value);
+                const response = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+                if (!response.ok) return;
+                const payload = await response.json();
+                dashboard = payload.data ?? payload;
+                setFilterUi();
+                renderKpis();
+                renderCharts();
+            };
+
+            els.apply.addEventListener("click", refreshAnalytics);
+            els.refresh.addEventListener("click", refreshAnalytics);
+            els.preset.addEventListener("change", () => {
+                const today = new Date();
+                const format = (date) => date.toISOString().slice(0, 10);
+                const clone = new Date(today);
+                switch (els.preset.value) {
+                    case "daily": clone.setDate(today.getDate() - 6); break;
+                    case "weekly": clone.setDate(today.getDate() - 41); break;
+                    case "monthly": clone.setDate(today.getDate() - 29); break;
+                    case "yearly": clone.setFullYear(today.getFullYear() - 1); clone.setMonth(today.getMonth(), 1); break;
+                    default: return;
+                }
+                els.start.value = format(clone);
+                els.end.value = format(today);
+            });
+
+            setFilterUi();
+            renderKpis();
+            renderCharts();
+            window.setInterval(refreshAnalytics, 60000);
+        })();
+    </script>
+}

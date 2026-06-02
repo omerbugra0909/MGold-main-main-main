@@ -1,0 +1,375 @@
+@model MGold.Application.DTOs.OrderDto
+@{
+    var panelBase = User.IsInRole("SystemAdmin") ? "/admin" : "/owner";
+    ViewData["Title"] = $"Siparis {Model.OrderNumber}";
+    ViewData["PageDescription"] = "Musteri, odeme, fatura, bildirim ve islem gecmisini tek bir akista incele.";
+}
+
+@section Styles {
+    <style>
+        .detail-layout { display: grid; gap: 18px; }
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            flex-wrap: wrap;
+            padding: 24px;
+        }
+        .hero h1 {
+            margin: 0 0 8px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 34px;
+        }
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(140px, 1fr));
+            gap: 12px;
+        }
+        .stat-box {
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.7);
+            border: 1px solid rgba(98, 67, 25, 0.08);
+        }
+        .stat-box strong {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+        .stat-box span {
+            display: block;
+            margin-top: 10px;
+            font-size: 22px;
+            color: var(--brand-strong);
+            font-family: "Space Grotesk", sans-serif;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1.15fr .85fr;
+            gap: 18px;
+        }
+        .panel {
+            padding: 22px;
+        }
+        .panel h2 {
+            margin: 0 0 16px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 24px;
+        }
+        .kv {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .kv div {
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(98, 67, 25, 0.08);
+        }
+        .kv strong,
+        .timeline time {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+        .items,
+        .payments,
+        .invoices,
+        .notifications,
+        .timeline { display: grid; gap: 12px; }
+        .entry {
+            padding: 16px 18px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.75);
+            border: 1px solid rgba(98, 67, 25, 0.08);
+        }
+        .entry-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .form-grid .full { grid-column: 1 / -1; }
+        .actions-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+        @@media (max-width: 980px) {
+            .detail-grid { grid-template-columns: 1fr; }
+            .hero-stats { grid-template-columns: 1fr; width: 100%; }
+        }
+        @@media (max-width: 700px) {
+            .kv,
+            .form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+}
+
+<div class="detail-layout">
+    <section class="surface hero">
+        <div>
+            <h1>@Model.OrderNumber</h1>
+            <div class="cluster">
+                <span class="badge">@Model.Status</span>
+                <span class="badge">@Model.PaymentStatus</span>
+                <span class="text-muted">Olusturulma: @Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.Notes))
+            {
+                <p class="text-muted" style="margin-top: 14px;">@Model.Notes</p>
+            }
+        </div>
+        <div class="hero-stats">
+            <div class="stat-box">
+                <strong>Toplam</strong>
+                <span>@Model.TotalAmount.ToString("N2") TL</span>
+            </div>
+            <div class="stat-box">
+                <strong>Odenen</strong>
+                <span>@Model.PaidAmount.ToString("N2") TL</span>
+            </div>
+            <div class="stat-box">
+                <strong>Kalan</strong>
+                <span>@Model.OutstandingAmount.ToString("N2") TL</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="detail-grid">
+        <div class="detail-layout">
+            <section class="surface panel">
+                <h2>Musteri ve Siparis</h2>
+                <div class="kv">
+                    <div><strong>Musteri</strong>@Model.CustomerName</div>
+                    <div><strong>Telefon</strong>@Model.CustomerPhone</div>
+                    <div><strong>E-Posta</strong>@(Model.CustomerEmail ?? "-")</div>
+                    <div><strong>Tercih Edilen Odeme</strong>@(Model.PreferredPaymentMethod?.ToString() ?? "-")</div>
+                    <div><strong>Teslim Tarihi</strong>@(Model.DueDate?.ToLocalTime().ToString("dd.MM.yyyy") ?? "-")</div>
+                    <div><strong>Son Guncelleme</strong>@Model.UpdatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                </div>
+            </section>
+
+            <section class="surface panel">
+                <h2>Urunler</h2>
+                <div class="items">
+                    @foreach (var item in Model.Items)
+                    {
+                        <article class="entry">
+                            <div class="entry-head">
+                                <strong>@item.ProductName</strong>
+                                <span>@item.TotalPrice.ToString("N2") TL</span>
+                            </div>
+                            <div class="text-muted">@item.Quantity adet x @item.UnitPrice.ToString("N2") TL</div>
+                            @if (!string.IsNullOrWhiteSpace(item.Notes))
+                            {
+                                <div class="text-muted">@item.Notes</div>
+                            }
+                        </article>
+                    }
+                </div>
+            </section>
+
+            <section class="surface panel">
+                <h2>Odeme Gecmisi</h2>
+                <div class="payments">
+                    @if (!Model.Payments.Any())
+                    {
+                        <div class="empty-state">Henuz odeme kaydi yok.</div>
+                    }
+                    else
+                    {
+                        @foreach (var payment in Model.Payments)
+                        {
+                            <article class="entry">
+                                <div class="entry-head">
+                                    <strong>@payment.Method</strong>
+                                    <span class="badge">@payment.Status</span>
+                                </div>
+                                <div>@payment.Amount.ToString("N2") TL</div>
+                                <div class="text-muted">@((payment.PaidAt ?? payment.CreatedAt).ToLocalTime().ToString("dd.MM.yyyy HH:mm"))</div>
+                                @if (!string.IsNullOrWhiteSpace(payment.ReferenceNumber))
+                                {
+                                    <div class="text-muted">Ref: @payment.ReferenceNumber</div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(payment.ProviderKey) || !string.IsNullOrWhiteSpace(payment.ProviderTransactionId))
+                                {
+                                    <div class="text-muted">Provider: @(payment.ProviderKey ?? "manual") @(string.IsNullOrWhiteSpace(payment.ProviderTransactionId) ? "" : $"• {payment.ProviderTransactionId}")</div>
+                                }
+                                @if (payment.InstallmentCount > 1 || payment.RequiresThreeDSecure || payment.IsRefund)
+                                {
+                                    <div class="text-muted">Taksit: @payment.InstallmentCount • 3D: @(payment.ThreeDSecureStatus ?? (payment.RequiresThreeDSecure ? "required" : "none")) • Iade: @(payment.IsRefund ? "Evet" : "Hayir")</div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(payment.FailureCode) || !string.IsNullOrWhiteSpace(payment.FailureMessage))
+                                {
+                                    <div class="text-muted">Hata: @payment.FailureCode @payment.FailureMessage</div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(payment.Notes))
+                                {
+                                    <div class="text-muted">@payment.Notes</div>
+                                }
+                            </article>
+                        }
+                    }
+                </div>
+            </section>
+
+            <section class="surface panel">
+                <h2>Islem Gecmisi</h2>
+                <div class="timeline">
+                    @if (!Model.HistoryEntries.Any())
+                    {
+                        <div class="empty-state">Timeline kaydi yok.</div>
+                    }
+                    else
+                    {
+                        @foreach (var entry in Model.HistoryEntries)
+                        {
+                            <article class="entry">
+                                <div class="entry-head">
+                                    <strong>@entry.Title</strong>
+                                    <time>@entry.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</time>
+                                </div>
+                                <div>@entry.Description</div>
+                                <div class="text-muted">@entry.Type @(string.IsNullOrWhiteSpace(entry.ActorUsername) ? "" : $"• {entry.ActorUsername} ({entry.ActorRole})")</div>
+                            </article>
+                        }
+                    }
+                </div>
+            </section>
+        </div>
+
+        <div class="detail-layout">
+            <section class="surface panel">
+                <h2>Durum Guncelle</h2>
+                <form method="post" action="@($"{panelBase}/orders/status")">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <div class="form-grid">
+                        <select name="status">
+                            @foreach (var status in Enum.GetValues<MGold.Domain.Enums.OrderStatus>())
+                            {
+                                <option value="@status" selected="@(status == Model.Status ? "selected" : null)">@status</option>
+                            }
+                        </select>
+                        <input type="text" name="notes" value="@Model.Notes" placeholder="Aciklama / not" />
+                    </div>
+                    <div class="actions-row">
+                        <button type="submit" class="btn btn-primary">Durumu kaydet</button>
+                        @if (Model.Status == MGold.Domain.Enums.OrderStatus.Completed)
+                        {
+                            <button type="submit" formaction="@($"{panelBase}/orders/invoice?id={Model.Id}")" class="btn">Fatura olustur</button>
+                        }
+                    </div>
+                </form>
+            </section>
+
+            <section class="surface panel">
+                <h2>Odeme Ekle</h2>
+                <form method="post" action="@($"{panelBase}/orders/payment")">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <div class="form-grid">
+                        <select name="Method">
+                            @foreach (var method in Enum.GetValues<MGold.Domain.Enums.PaymentMethod>())
+                            {
+                                <option value="@method" selected="@(method == (Model.PreferredPaymentMethod ?? MGold.Domain.Enums.PaymentMethod.Cash) ? "selected" : null)">@method</option>
+                            }
+                        </select>
+                        <select name="Status">
+                            @foreach (var paymentStatus in Enum.GetValues<MGold.Domain.Enums.PaymentStatus>())
+                            {
+                                <option value="@paymentStatus" selected="@(paymentStatus == MGold.Domain.Enums.PaymentStatus.Paid ? "selected" : null)">@paymentStatus</option>
+                            }
+                        </select>
+                        <input type="number" step="0.01" name="Amount" placeholder="Tutar" />
+                        <input type="text" name="ReferenceNumber" placeholder="Referans / islem no" />
+                        <input type="text" name="ProviderKey" placeholder="Saglayici (manual, iyzico, paytr...)" />
+                        <input type="text" name="ProviderTransactionId" placeholder="Saglayici islem no" />
+                        <input type="text" name="IdempotencyKey" placeholder="Tekil istek anahtari" />
+                        <input type="number" min="1" max="36" name="InstallmentCount" value="1" placeholder="Taksit" />
+                        <label>
+                            <span>3D Secure</span>
+                            <input type="checkbox" name="RequiresThreeDSecure" value="true" />
+                        </label>
+                        <input type="text" name="ThreeDSecureStatus" placeholder="3D durumu" />
+                        <input type="number" name="ParentPaymentId" placeholder="Iade ana odeme ID" />
+                        <label>
+                            <span>Iade kaydi</span>
+                            <input type="checkbox" name="IsRefund" value="true" />
+                        </label>
+                        <input type="text" name="FailureCode" placeholder="Basarisiz odeme hata kodu" />
+                        <input type="text" name="FailureMessage" placeholder="Basarisiz odeme hata mesaji" />
+                        <input type="datetime-local" name="PaidAt" />
+                        <input type="text" name="Notes" class="full" placeholder="Odeme notu" />
+                    </div>
+                    <div class="actions-row">
+                        <button type="submit" class="btn btn-primary">Odemeyi kaydet</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="surface panel">
+                <h2>Faturalar</h2>
+                <div class="invoices">
+                    @if (!Model.Invoices.Any())
+                    {
+                        <div class="empty-state">Bu siparis icin olusturulmus fatura yok.</div>
+                    }
+                    else
+                    {
+                        @foreach (var invoice in Model.Invoices)
+                        {
+                            <article class="entry">
+                                <div class="entry-head">
+                                    <strong>@invoice.InvoiceNumber</strong>
+                                    <span>@invoice.InvoiceDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                                </div>
+                                <div>@invoice.TotalAmount.ToString("N2") TL</div>
+                                <div class="actions-row">
+                                    <a href="@($"{panelBase}/invoices/{invoice.Id}/preview")" target="_blank" class="btn">Goruntule</a>
+                                    <a href="@($"{panelBase}/invoices/{invoice.Id}/download")" class="btn btn-primary">Indir</a>
+                                </div>
+                            </article>
+                        }
+                    }
+                </div>
+            </section>
+
+            <section class="surface panel">
+                <h2>Gonderilen Bildirimler</h2>
+                <div class="notifications">
+                    @if (!Model.Notifications.Any())
+                    {
+                        <div class="empty-state">Ilgili sistem bildirimi bulunmuyor.</div>
+                    }
+                    else
+                    {
+                        @foreach (var notification in Model.Notifications)
+                        {
+                            <article class="entry">
+                                <div class="entry-head">
+                                    <strong>@notification.Title</strong>
+                                    <span class="badge">@notification.Type</span>
+                                </div>
+                                <div>@notification.Message</div>
+                                <div class="text-muted">@notification.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                            </article>
+                        }
+                    }
+                </div>
+            </section>
+        </div>
+    </section>
+</div>

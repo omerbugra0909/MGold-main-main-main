@@ -1,0 +1,54 @@
+@model MGold.Controllers.UserLoginViewModel
+@{
+    ViewData["Title"] = "Kullanici Girisi";
+    ViewData["PageDescription"] = "Musteri hesabinizla giris yapin ve sadece size ait islemleri yonetin.";
+    var returnUrl = ViewData["ReturnUrl"]?.ToString();
+}
+
+@section Styles {
+    <style>
+        .auth-wrap {
+            width: min(560px, 100%);
+            margin: 0 auto;
+            padding: 28px;
+        }
+        .auth-wrap h2 {
+            margin: 0 0 10px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 32px;
+        }
+        .auth-form { display: grid; gap: 14px; margin-top: 16px; }
+        .auth-note {
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: rgba(111, 71, 16, 0.08);
+            color: var(--muted);
+        }
+    </style>
+}
+
+<section class="surface auth-wrap">
+    <span class="badge">Customer Login</span>
+    <h2>Kullanici Girisi</h2>
+    <p class="text-muted">Bu ekran yalnizca normal musteri hesaplari icindir. Admin hesaplari ayrica korunur.</p>
+
+    <form method="post" class="auth-form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
+        @Html.ValidationSummary(false)
+        <label>
+            <span>E-posta veya Kullanici Adi</span>
+            <input asp-for="EmailOrUsername" />
+        </label>
+        <label>
+            <span>Sifre</span>
+            <input asp-for="Password" type="password" />
+        </label>
+        <button type="submit" class="btn btn-primary">Giris Yap</button>
+    </form>
+
+    <div class="auth-note" style="margin-top:16px;">
+        Hesabiniz yoksa <a href="/auth/register"><strong>yeni musteri kaydi</strong></a> olusturabilirsiniz.
+        Sifrenizi unuttuysaniz <a href="/auth/forgot-password"><strong>guvenli sifre yenileme</strong></a> akisini kullanin.
+    </div>
+</section>

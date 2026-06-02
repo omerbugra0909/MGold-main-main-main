@@ -1,0 +1,47 @@
+@using MGold.Domain.Enums
+@model MGold.Application.DTOs.EmployeeWorkspaceDto
+@{
+    ViewData["Title"] = "Calisma Alani";
+    ViewData["PageDescription"] = "Personel gorevleri ve durum guncellemeleri.";
+}
+
+<style>
+    .emp-cards, .emp-list { display:grid; gap:16px; }
+    .emp-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .emp-card, .emp-panel { padding:22px; }
+    .emp-value { display:block; margin-top:12px; font-size:30px; font-weight:800; color:var(--gold-0); }
+    .emp-list article { padding:16px; border-radius:18px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); }
+    @@media (max-width: 1020px) { .emp-cards { grid-template-columns: 1fr; } }
+</style>
+
+<section class="emp-cards">
+    <article class="surface emp-card"><strong>Calisan</strong><span class="emp-value">@Model.FullName</span></article>
+    <article class="surface emp-card"><strong>Firma</strong><span class="emp-value">@Model.CompanyName</span></article>
+    <article class="surface emp-card"><strong>Atanmis Gorev</strong><span class="emp-value">@Model.AssignedTaskCount</span></article>
+    <article class="surface emp-card"><strong>Tamamlanan</strong><span class="emp-value">@Model.CompletedTaskCount</span></article>
+</section>
+
+<section class="surface emp-panel" style="margin-top:18px;">
+    <span class="badge">Task Board</span>
+    <h2>Benim Gorevlerim</h2>
+    <div class="emp-list" style="margin-top:16px;">
+        @foreach (var task in Model.Tasks)
+        {
+            <article>
+                <strong>@task.Title</strong>
+                <div class="text-muted" style="margin-top:8px;">Atayan: @task.AssignedBy • Oncelik: @task.Priority • Durum: @task.Status</div>
+                <div class="text-muted" style="margin-top:6px;">@task.Description</div>
+                <form method="post" action="/employee/tasks/@task.Id/status" style="display:grid; gap:10px; margin-top:14px;">
+                    @Html.AntiForgeryToken()
+                    <select name="Status">
+                        @if (task.Status == MGold.Domain.Enums.TaskStatus.Waiting) { <option value="@MGold.Domain.Enums.TaskStatus.Waiting" selected>Bekliyor</option> } else { <option value="@MGold.Domain.Enums.TaskStatus.Waiting">Bekliyor</option> }
+                        @if (task.Status == MGold.Domain.Enums.TaskStatus.InProgress) { <option value="@MGold.Domain.Enums.TaskStatus.InProgress" selected>Yapiliyor</option> } else { <option value="@MGold.Domain.Enums.TaskStatus.InProgress">Yapiliyor</option> }
+                        @if (task.Status == MGold.Domain.Enums.TaskStatus.Completed) { <option value="@MGold.Domain.Enums.TaskStatus.Completed" selected>Tamamlandi</option> } else { <option value="@MGold.Domain.Enums.TaskStatus.Completed">Tamamlandi</option> }
+                    </select>
+                    <textarea name="Note" placeholder="Durum notu"></textarea>
+                    <button type="submit" class="btn btn-primary">Durumu Guncelle</button>
+                </form>
+            </article>
+        }
+    </div>
+</section>

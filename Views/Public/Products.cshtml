@@ -1,0 +1,434 @@
+@model MGold.Controllers.PublicProductsPageViewModel
+@{
+    ViewData["Title"] = "Urunler";
+    ViewData["PageDescription"] = "Urun listesini daha genis, net ve filtrelenebilir bir ekranda goruntule.";
+    var hasServerFilters =
+        !string.IsNullOrWhiteSpace(Model.Filter.Search) ||
+        Model.Filter.Type.HasValue ||
+        Model.Filter.MinPrice.HasValue ||
+        Model.Filter.MaxPrice.HasValue ||
+        Model.Filter.InStockOnly ||
+        Model.Filter.LowStockOnly;
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+}
+
+@section Styles {
+    <style>
+        .products-stack {
+            display: grid;
+            gap: 18px;
+        }
+        .products-hero {
+            padding: 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 18px;
+            background:
+                radial-gradient(circle at top right, rgba(255, 216, 127, 0.28), transparent 26%),
+                linear-gradient(145deg, rgba(72, 48, 18, 0.98) 0%, rgba(120, 82, 28, 0.94) 100%);
+            color: #fff4dc;
+        }
+        .products-hero h2 {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: clamp(28px, 4vw, 40px);
+        }
+        .products-hero p {
+            margin: 10px 0 0;
+            max-width: 760px;
+            color: rgba(255, 244, 220, 0.82);
+            line-height: 1.7;
+        }
+        .products-hero .badge {
+            background: rgba(255,255,255,0.12);
+            color: #fff7e7;
+        }
+        .filters-card,
+        .list-card {
+            padding: 22px;
+        }
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .field {
+            display: grid;
+            gap: 7px;
+        }
+        .field span {
+            font-size: 13px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .filter-actions,
+        .table-actions,
+        .panel-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .list-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .list-toolbar input {
+            max-width: 320px;
+        }
+        .summary-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 14px;
+        }
+        .product-table td {
+            white-space: nowrap;
+        }
+        .product-table td:nth-child(2) {
+            white-space: normal;
+            min-width: 240px;
+        }
+        .product-table .text-muted {
+            display: block;
+            margin-top: 4px;
+        }
+        .table-actions .btn-primary {
+            flex-basis: 100%;
+        }
+        .status-gold { background: rgba(229, 184, 77, 0.16); }
+        .status-silver { background: rgba(147, 161, 180, 0.16); }
+        .status-diamond { background: rgba(99, 178, 206, 0.16); }
+        .empty-state {
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px dashed rgba(111, 71, 16, 0.24);
+            background: rgba(255, 249, 237, 0.9);
+            color: var(--muted);
+        }
+        .overlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(32, 22, 9, 0.48);
+            backdrop-filter: blur(10px);
+            z-index: 40;
+        }
+        .overlay.is-open { display: flex; }
+        .modal-card {
+            width: min(780px, 100%);
+            max-height: 92vh;
+            overflow: auto;
+            padding: 22px;
+            border-radius: 28px;
+            background: var(--panel-strong);
+            box-shadow: 0 30px 80px rgba(32, 22, 9, 0.28);
+        }
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .modal-head h3 {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 28px;
+        }
+        .modal-head p {
+            margin: 6px 0 0;
+            color: var(--muted);
+        }
+        .icon-btn {
+            width: 44px;
+            height: 44px;
+            border: 1px solid rgba(98, 67, 25, 0.12);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.72);
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        @@media (max-width: 980px) {
+            .filter-grid { grid-template-columns: 1fr 1fr; }
+            .products-hero { flex-direction: column; }
+        }
+        @@media (max-width: 760px) {
+            .filter-grid { grid-template-columns: 1fr; }
+            .list-toolbar { flex-direction: column; align-items: stretch; }
+            .list-toolbar input { max-width: none; }
+        }
+    </style>
+}
+
+<div class="products-stack">
+    <section class="surface products-hero">
+        <div>
+            <h2>Urunler</h2>
+            <p>Bu sayfa sadece liste icin ayrildi. Boylece urunleri daha genis alanda, satirlar birbirine girmeden ve filtreleri daha rahat kullanarak gorebilirsin.</p>
+        </div>
+        <div class="badge">@Model.Dashboard.TotalProducts toplam urun</div>
+    </section>
+
+    @if (TempData["Success"] is string ok && !string.IsNullOrWhiteSpace(ok))
+    {
+        <div class="message message-success">@ok</div>
+    }
+    @if (TempData["Error"] is string error && !string.IsNullOrWhiteSpace(error))
+    {
+        <div class="message message-error">@error</div>
+    }
+    @if (ViewData["LoadError"] is string loadError && !string.IsNullOrWhiteSpace(loadError))
+    {
+        <div class="message message-error">@loadError</div>
+    }
+
+    <section class="surface filters-card">
+        <h2 class="section-title">Filtreler</h2>
+        <p class="section-copy">Listeyi isim, tip, fiyat ve stok durumuna gore daralt.</p>
+        <form method="get" asp-controller="Public" asp-action="Products" class="products-stack" style="margin-top:16px;">
+            <div class="filter-grid">
+                <label class="field">
+                    <span>Isme Gore</span>
+                    <input asp-for="Filter.Search" placeholder="Urun ismi" />
+                </label>
+                <label class="field">
+                    <span>Tip</span>
+                    <select asp-for="Filter.Type" asp-items="Html.GetEnumSelectList<MGold.Domain.Enums.ProductType>()">
+                        <option value="">Tum tipler</option>
+                    </select>
+                </label>
+                <label class="field">
+                    <span>Min Fiyat</span>
+                    <input asp-for="Filter.MinPrice" type="number" step="0.01" />
+                </label>
+                <label class="field">
+                    <span>Max Fiyat</span>
+                    <input asp-for="Filter.MaxPrice" type="number" step="0.01" />
+                </label>
+                <label class="field">
+                    <span>Stokta Olanlar</span>
+                    <select asp-for="Filter.InStockOnly">
+                        <option value="false">Tum urunler</option>
+                        <option value="true">Sadece stokta olanlar</option>
+                    </select>
+                </label>
+                <label class="field">
+                    <span>Dusuk Stok</span>
+                    <select asp-for="Filter.LowStockOnly">
+                        <option value="false">Tum seviyeler</option>
+                        <option value="true">Sadece dusuk stok</option>
+                    </select>
+                </label>
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Filtrele</button>
+                <a class="btn btn-secondary" asp-controller="Public" asp-action="Products">Temizle</a>
+                <a class="btn btn-secondary" asp-controller="Public" asp-action="Index">Dashboard'a Don</a>
+            </div>
+            <div class="summary-row">
+                <strong id="visibleCount">@Model.Products.Count</strong>
+                <span class="text-muted">kayit gosteriliyor</span>
+                <span class="badge">@Model.Dashboard.TotalProducts toplam urun</span>
+                @if (hasServerFilters)
+                {
+                    <span class="badge">Sunucu filtreleri aktif</span>
+                }
+            </div>
+        </form>
+    </section>
+
+    <section class="surface list-card">
+        <div class="list-toolbar">
+            <div>
+                <h2 class="section-title">Urun Listesi</h2>
+                <p class="section-copy">Daha ferah tablo yapisi ile listeyi net goruntule.</p>
+            </div>
+            <input id="searchBox" placeholder="Tabloda hizli ara..." />
+        </div>
+
+        @if (!Model.Products.Any())
+        {
+            <div class="empty-state">Filtrelere uyan urun bulunmuyor.</div>
+        }
+        else
+        {
+            <div class="data-table-wrap">
+                <table id="productsTable" class="data-table product-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Urun</th>
+                            <th>Tip</th>
+                            <th>Agirlik</th>
+                            <th>Saflik</th>
+                            <th>Stok</th>
+                            <th>Alis</th>
+                            <th>Satis</th>
+                            <th>Ek Maliyet</th>
+                            <th>Kar %</th>
+                            <th>Islem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Products)
+                        {
+                            var tagClass = item.Type == MGold.Domain.Enums.ProductType.Gold
+                                ? "status-gold"
+                                : item.Type == MGold.Domain.Enums.ProductType.Silver
+                                    ? "status-silver"
+                                    : "status-diamond";
+                            <tr>
+                                <td>#@item.Id</td>
+                                <td>
+                                    <strong class="product-name">@item.Name</strong>
+                                    <span class="text-muted">@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                                </td>
+                                <td><span class="badge @tagClass">@item.Type</span></td>
+                                <td>@item.Weight.ToString("N3") gr</td>
+                                <td>@item.PurityRate.ToString("N4")</td>
+                                <td>@item.StockQuantity</td>
+                                <td>@item.PurchasePrice.ToString("N2") TL</td>
+                                <td>@item.SalePrice.ToString("N2") TL</td>
+                                <td>@item.AdditionalCost.ToString("N2") TL</td>
+                                <td>@item.ProfitMarginPercentage.ToString("N2")</td>
+                                <td>
+                                    <div class="table-actions">
+                                        @if (User.IsInRole("Customer"))
+                                        {
+                                            <button class="btn btn-primary order-trigger"
+                                                    type="button"
+                                                    data-id="@item.Id"
+                                                    data-name="@item.Name"
+                                                    data-stock="@item.StockQuantity">
+                                                Siparis Ver
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <a class="btn btn-primary" href="/auth/login">Siparis Ver</a>
+                                        }
+                                        @if (User.IsInRole("Manager"))
+                                        {
+                                            <a class="btn btn-secondary" asp-controller="Admin" asp-action="Products">Yonet</a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+<section id="orderOverlay" class="overlay">
+    <article class="modal-card" style="max-width:540px;">
+        <div class="modal-head">
+            <div>
+                <h3>Siparis Olustur</h3>
+                <p>Secili urun icin siparis bilgilerini gir.</p>
+            </div>
+            <button id="closeOrderPanel" class="icon-btn" type="button" aria-label="Siparis panelini kapat">×</button>
+        </div>
+        <form method="post" asp-controller="Public" asp-action="PlaceOrder" class="products-stack">
+            @Html.AntiForgeryToken()
+            <input id="orderProductId" name="productId" type="hidden" />
+            <input type="hidden" name="returnUrl" value="@returnUrl" />
+            <div class="auth-note">
+                Siparis verilen urun: <strong id="orderProductName"></strong>
+                <div class="text-muted">Mevcut stok: <span id="orderProductStock"></span></div>
+            </div>
+            <label class="field">
+                <span>Miktar</span>
+                <input id="orderQuantity" name="quantity" type="number" min="1" value="1" required />
+            </label>
+            <label class="field">
+                <span>Odeme Tercihi</span>
+                <select name="preferredPaymentMethod">
+                    @foreach (var method in Enum.GetValues<MGold.Domain.Enums.PaymentMethod>())
+                    {
+                        <option value="@method">@method</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span>Not</span>
+                <textarea name="notes" rows="4" placeholder="Teslimat veya urun notu ekleyebilirsiniz"></textarea>
+            </label>
+            <div class="panel-actions">
+                <button class="btn btn-primary" type="submit">Siparisi Gonder</button>
+                <button id="cancelOrderPanel" class="btn btn-secondary" type="button">Iptal</button>
+            </div>
+        </form>
+    </article>
+</section>
+
+<partial name="_ValidationScriptsPartial" />
+
+@section Scripts {
+    <script>
+        const search = document.getElementById("searchBox");
+        const rows = Array.from(document.querySelectorAll("#productsTable tbody tr"));
+        const visibleCount = document.getElementById("visibleCount");
+
+        const refreshVisibleCount = () => {
+            if (!visibleCount) {
+                return;
+            }
+
+            const activeRows = rows.filter((row) => row.style.display !== "none").length;
+            visibleCount.textContent = activeRows.toString();
+        };
+
+        if (search && rows.length) {
+            search.addEventListener("input", (event) => {
+                const query = event.target.value.toLowerCase().trim();
+                rows.forEach((row) => {
+                    const text = row.innerText.toLowerCase();
+                    row.style.display = text.includes(query) ? "" : "none";
+                });
+                refreshVisibleCount();
+            });
+        }
+
+        refreshVisibleCount();
+
+        const orderOverlay = document.getElementById("orderOverlay");
+        const orderButtons = document.querySelectorAll(".order-trigger");
+
+        const openOverlay = (overlay) => overlay?.classList.add("is-open");
+        const closeOverlay = (overlay) => overlay?.classList.remove("is-open");
+
+        orderButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                document.getElementById("orderProductId").value = button.dataset.id ?? "";
+                document.getElementById("orderProductName").textContent = button.dataset.name ?? "";
+                document.getElementById("orderProductStock").textContent = button.dataset.stock ?? "0";
+                document.getElementById("orderQuantity").max = button.dataset.stock ?? "";
+                openOverlay(orderOverlay);
+            });
+        });
+
+        document.getElementById("closeOrderPanel")?.addEventListener("click", () => closeOverlay(orderOverlay));
+        document.getElementById("cancelOrderPanel")?.addEventListener("click", () => closeOverlay(orderOverlay));
+
+        [orderOverlay].forEach((overlay) => {
+            overlay?.addEventListener("click", (event) => {
+                if (event.target === overlay) {
+                    closeOverlay(overlay);
+                }
+            });
+        });
+    </script>
+}

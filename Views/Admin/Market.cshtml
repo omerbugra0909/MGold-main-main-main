@@ -1,0 +1,7 @@
+@model MGold.Application.DTOs.MarketBoardPageViewModel
+@{
+    ViewData["Title"] = "Market Control Center";
+    ViewData["PageDescription"] = "Canli piyasa akislarini ve provider sagligini yonetin.";
+}
+
+@await Html.PartialAsync("_MarketBoard", Model)

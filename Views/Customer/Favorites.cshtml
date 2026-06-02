@@ -1,0 +1,45 @@
+@model MGold.Controllers.CustomerFavoritesPageViewModel
+@{
+    ViewData["Title"] = "Favoriler";
+    ViewData["PageDescription"] = "Karar vermek istediginiz urunleri biriktirin ve sonra geri donun.";
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+}
+
+@section Styles {
+    <style>
+        .favorites { display: grid; gap: 14px; }
+        .favorite-card { padding: 20px; }
+    </style>
+}
+
+<section class="favorites">
+    @if (!Model.Favorites.Any())
+    {
+        <div class="surface" style="padding:22px;">
+            <div class="empty-state">Favori listeniz su an bos.</div>
+        </div>
+    }
+    else
+    {
+        @foreach (var item in Model.Favorites)
+        {
+            <article class="surface favorite-card">
+                <div class="cluster">
+                    <strong>@item.ProductName</strong>
+                    <span class="badge">@item.Type</span>
+                    <span class="text-muted">@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                </div>
+                <div style="margin-top:10px;">@item.SalePrice.ToString("N2") TL</div>
+                <div class="text-muted">Stok: @item.StockQuantity</div>
+                <div style="margin-top:14px;">
+                    <form method="post" asp-action="ToggleFavorite">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="productId" value="@item.ProductId" />
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        <button type="submit" class="btn btn-secondary">Listeden Cikar</button>
+                    </form>
+                </div>
+            </article>
+        }
+    }
+</section>

@@ -1,0 +1,82 @@
+@model MGold.Application.DTOs.PlatformDashboardDto
+@{
+    ViewData["Title"] = "Platform Yonetimi";
+    ViewData["PageDescription"] = "Firmalar ve yoneticiler sistem admini tarafindan yonetilir.";
+}
+
+<style>
+    .platform-grid, .platform-cards, .platform-forms, .platform-list { display:grid; gap:16px; }
+    .platform-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .platform-grid { grid-template-columns: 1.1fr .9fr; align-items:start; }
+    .platform-card, .platform-panel { padding: 22px; }
+    .platform-stat { font-size: 32px; font-weight: 800; color: var(--gold-0); margin-top: 12px; display:block; }
+    .platform-list article { padding: 16px; border-radius: 18px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.05); }
+    .platform-forms { grid-template-columns: 1fr 1fr; }
+    .platform-forms form { display:grid; gap:12px; }
+    @@media (max-width: 1100px) { .platform-grid, .platform-cards, .platform-forms { grid-template-columns: 1fr; } }
+</style>
+
+<section class="platform-cards">
+    <article class="surface platform-card"><strong>Toplam Firma</strong><span class="platform-stat">@Model.TotalCompanies</span></article>
+    <article class="surface platform-card"><strong>Aktif Firma</strong><span class="platform-stat">@Model.ActiveCompanies</span></article>
+    <article class="surface platform-card"><strong>Ic Kullanicilar</strong><span class="platform-stat">@Model.TotalInternalUsers</span></article>
+    <article class="surface platform-card"><strong>Toplam Musteri</strong><span class="platform-stat">@Model.TotalCustomers</span></article>
+</section>
+
+<section class="platform-grid" style="margin-top:18px;">
+    <article class="surface platform-panel">
+        <span class="badge">Platform Matrix</span>
+        <h2>Firma Portfoyu</h2>
+        <div class="platform-list" style="margin-top:18px;">
+            @foreach (var company in Model.Companies)
+            {
+                <article>
+                    <strong>@company.Name</strong>
+                    <div class="text-muted" style="margin-top:8px;">Kod: @(company.Code ?? "-") • Urun: @company.ProductCount • Acik Siparis: @company.OpenOrderCount</div>
+                    <div class="text-muted" style="margin-top:6px;">Yoneticiler: @company.ManagerCount • Calisanlar: @company.EmployeeCount • Bekleyen Gorevler: @company.PendingTaskCount</div>
+                </article>
+            }
+        </div>
+    </article>
+
+    <div class="platform-forms">
+        <article class="surface platform-panel">
+            <span class="badge">Yeni Firma</span>
+            <h3>Firma Olustur</h3>
+            <form method="post" action="/admin/platform/companies">
+                @Html.AntiForgeryToken()
+                <input type="text" name="Name" placeholder="Firma adi" required />
+                <input type="text" name="Code" placeholder="Kisa kod" />
+                <input type="text" name="Address" placeholder="Adres" />
+                <input type="email" name="ContactEmail" placeholder="Firma e-postasi" />
+                <input type="text" name="ContactPhone" placeholder="Telefon" />
+                <button type="submit" class="btn btn-primary">Firma Kaydet</button>
+            </form>
+        </article>
+
+        <article class="surface platform-panel">
+            <span class="badge">Yoneticiler</span>
+            <h3>Firma Kullanici Olustur</h3>
+            <form method="post" action="/admin/platform/users">
+                @Html.AntiForgeryToken()
+                <select name="CompanyId" required>
+                    <option value="">Firma secin</option>
+                    @foreach (var company in Model.Companies)
+                    {
+                        <option value="@company.Id">@company.Name</option>
+                    }
+                </select>
+                <select name="Role" required>
+                    <option value="Manager">Dukkan Sahibi / Patron</option>
+                    <option value="Employee">Calisan</option>
+                </select>
+                <input type="text" name="FullName" placeholder="Ad soyad" required />
+                <input type="text" name="Username" placeholder="Kullanici adi" required />
+                <input type="email" name="Email" placeholder="E-posta" required />
+                <input type="text" name="Phone" placeholder="Telefon" required />
+                <input type="password" name="Password" placeholder="Gecici sifre" required />
+                <button type="submit" class="btn btn-primary">Kullanici Olustur</button>
+            </form>
+        </article>
+    </div>
+</section>

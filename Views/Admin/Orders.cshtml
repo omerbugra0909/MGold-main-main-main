@@ -1,0 +1,152 @@
+@model MGold.Controllers.AdminOrdersPageViewModel
+@{
+    var panelBase = User.IsInRole("SystemAdmin") ? "/admin" : "/owner";
+    ViewData["Title"] = "Siparisler";
+    ViewData["PageDescription"] = "Siparisleri, odeme durumlarini ve fatura akislarini tek panelden yonet.";
+}
+
+@section Styles {
+    <style>
+        .orders-stack { display: grid; gap: 18px; }
+        .orders-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+        }
+        .mini-stat { padding: 18px; }
+        .mini-stat strong {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+        .mini-stat span {
+            display: block;
+            margin-top: 10px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 30px;
+            color: var(--brand-strong);
+        }
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .orders-table th,
+        .orders-table td {
+            padding: 14px 10px;
+            border-bottom: 1px solid rgba(98, 67, 25, 0.08);
+            text-align: left;
+            vertical-align: middle;
+        }
+        .payment-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(160, 126, 59, 0.12);
+            color: var(--brand-strong);
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .table-actions {
+            display: inline-flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        @@media (max-width: 1080px) {
+            .orders-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @@media (max-width: 780px) {
+            .orders-grid { grid-template-columns: 1fr; }
+            .orders-table,
+            .orders-table thead,
+            .orders-table tbody,
+            .orders-table th,
+            .orders-table td,
+            .orders-table tr { display: block; }
+            .orders-table thead { display: none; }
+            .orders-table tr {
+                padding: 16px 0;
+                border-bottom: 1px solid rgba(98, 67, 25, 0.08);
+            }
+            .orders-table td {
+                border: 0;
+                padding: 6px 0;
+            }
+        }
+    </style>
+}
+
+<div class="orders-stack">
+    <section class="orders-grid">
+        <article class="surface mini-stat">
+            <strong>Toplam Siparis</strong>
+            <span>@Model.Orders.Count</span>
+        </article>
+        <article class="surface mini-stat">
+            <strong>Tahsil Edilen</strong>
+            <span>@Model.CollectedRevenue.ToString("N0")</span>
+        </article>
+        <article class="surface mini-stat">
+            <strong>Toplam Ciro</strong>
+            <span>@Model.TotalRevenue.ToString("N0")</span>
+        </article>
+        <article class="surface mini-stat">
+            <strong>Eksik Odeme</strong>
+            <span>@Model.Orders.Count(x => x.PaymentStatus != MGold.Domain.Enums.PaymentStatus.Paid)</span>
+        </article>
+    </section>
+
+    <section class="surface surface-inner">
+        @if (!Model.Orders.Any())
+        {
+            <div class="empty-state">Henuz siparis kaydi yok.</div>
+        }
+        else
+        {
+            <table class="orders-table">
+                <thead>
+                    <tr>
+                        <th>Siparis</th>
+                        <th>Musteri</th>
+                        <th>Durum</th>
+                        <th>Odeme</th>
+                        <th>Tutar</th>
+                        <th>Fatura</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var order in Model.Orders)
+                {
+                    <tr>
+                        <td>
+                            <strong>@order.OrderNumber</strong>
+                            <div class="text-muted">@order.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                        </td>
+                        <td>
+                            <strong>@order.CustomerName</strong>
+                            <div class="text-muted">@order.CustomerPhone</div>
+                        </td>
+                        <td>
+                            <span class="badge">@order.Status</span>
+                        </td>
+                        <td>
+                            <span class="payment-pill">@order.PaymentStatus</span>
+                            <div class="text-muted">@order.PaidAmount.ToString("N2") / @order.TotalAmount.ToString("N2") TL</div>
+                        </td>
+                        <td>@order.TotalAmount.ToString("N2") TL</td>
+                        <td>@order.Invoices.Count</td>
+                        <td>
+                            <div class="table-actions">
+                                <a href="@($"{panelBase}/orders/{order.Id}")" class="btn btn-primary">Detay</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </section>
+</div>

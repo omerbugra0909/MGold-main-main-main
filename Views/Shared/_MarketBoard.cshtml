@@ -1,0 +1,923 @@
+@using System.Text.Json
+@model MGold.Application.DTOs.MarketBoardPageViewModel
+@{
+    var adminMarketBasePath = User.IsInRole("Manager") ? "/owner/market" : "/admin/market";
+}
+@{
+    var initialDashboardJson = JsonSerializer.Serialize(Model.Dashboard, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+}
+
+<style>
+    .market-shell { display: grid; gap: 18px; }
+    .market-hero {
+        padding: 24px;
+        display: grid;
+        grid-template-columns: 1.15fr .85fr;
+        gap: 18px;
+        background:
+            radial-gradient(circle at top right, rgba(199, 155, 83, 0.12), transparent 26%),
+            radial-gradient(circle at 72% 28%, rgba(143, 197, 218, 0.06), transparent 18%),
+            linear-gradient(150deg, rgba(17, 20, 27, 0.96), rgba(10, 12, 16, 0.98));
+    }
+    .market-hero h2 {
+        margin: 10px 0 0;
+        font-family: "Cinzel", serif;
+        font-size: clamp(32px, 4vw, 52px);
+        line-height: 1.04;
+        letter-spacing: .04em;
+    }
+    .market-hero p {
+        margin: 14px 0 0;
+        max-width: 720px;
+        color: rgba(243, 236, 223, 0.72);
+        line-height: 1.75;
+    }
+    .market-summary-grid,
+    .market-toolbar,
+    .market-board,
+    .market-card-grid,
+    .market-side-stack,
+    .market-provider-grid { display: grid; gap: 14px; }
+    .market-summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .market-summary-card,
+    .market-spot-card,
+    .market-panel,
+    .market-provider-card { padding: 20px; }
+    .market-summary-card strong,
+    .market-spot-card strong,
+    .market-provider-card strong {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .12em;
+    }
+    .market-summary-card span,
+    .market-spot-card span {
+        display: block;
+        margin-top: 12px;
+        font-size: clamp(24px, 3vw, 34px);
+        font-weight: 800;
+        color: var(--gold-0);
+    }
+    .market-hero-stage {
+        display: grid;
+        align-content: space-between;
+        gap: 14px;
+    }
+    .market-spot-card {
+        border-radius: 24px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+    .market-spot-card p,
+    .market-provider-card p {
+        margin: 10px 0 0;
+        color: var(--muted);
+        line-height: 1.65;
+    }
+    .market-toolbar {
+        grid-template-columns: 1.2fr .9fr;
+        align-items: start;
+    }
+    .market-toolbar-left,
+    .market-toolbar-right,
+    .market-filter-row,
+    .market-actions,
+    .market-live-row,
+    .market-card-meta,
+    .market-card-footer,
+    .market-modal-grid,
+    .market-provider-row,
+    .market-provider-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .market-search {
+        position: relative;
+        min-width: 260px;
+        flex: 1 1 280px;
+    }
+    .market-search input {
+        padding-left: 42px;
+        min-height: 52px;
+    }
+    .market-search span {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+        font-size: 15px;
+    }
+    .market-filter-chip {
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.06);
+        background: rgba(255,255,255,0.03);
+        color: rgba(243, 236, 223, 0.84);
+        cursor: pointer;
+        transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition);
+    }
+    .market-filter-chip:hover,
+    .market-filter-chip.is-active {
+        transform: translateY(-1px);
+        border-color: rgba(199, 155, 83, 0.24);
+        background: linear-gradient(135deg, rgba(199, 155, 83, 0.14), rgba(255,255,255,0.03));
+        color: var(--gold-0);
+    }
+    .market-board {
+        grid-template-columns: minmax(0, 1fr) 320px;
+        align-items: start;
+    }
+    .market-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .market-card {
+        position: relative;
+        overflow: hidden;
+        padding: 18px;
+        border-radius: 26px;
+        background:
+            linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018)),
+            rgba(10, 13, 17, 0.86);
+        border: 1px solid rgba(255,255,255,0.05);
+        transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition), background var(--transition);
+        box-shadow: 0 22px 54px rgba(0,0,0,0.22);
+    }
+    .market-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top right, rgba(199, 155, 83, 0.12), transparent 24%);
+        opacity: .85;
+        pointer-events: none;
+    }
+    .market-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(199, 155, 83, 0.18);
+        box-shadow: 0 28px 70px rgba(0,0,0,0.3);
+    }
+    .market-card.is-flash-up { animation: market-tick-up .9s ease; }
+    .market-card.is-flash-down { animation: market-tick-down .9s ease; }
+    .market-card-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+    }
+    .market-card-symbol {
+        font-size: 12px;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+        color: rgba(199, 155, 83, 0.78);
+    }
+    .market-card-title {
+        margin-top: 6px;
+        font-size: 20px;
+        font-weight: 700;
+    }
+    .market-card-price {
+        margin-top: 16px;
+        font-size: clamp(24px, 3vw, 34px);
+        font-weight: 800;
+        letter-spacing: -.02em;
+    }
+    .market-card-price small {
+        font-size: 13px;
+        color: var(--muted);
+        margin-left: 6px;
+    }
+    .market-card-change {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 700;
+    }
+    .market-card-change.is-up {
+        color: #81d4a1;
+        background: rgba(43, 112, 74, 0.18);
+        border: 1px solid rgba(95, 210, 140, 0.18);
+    }
+    .market-card-change.is-down {
+        color: #ff8d8d;
+        background: rgba(124, 40, 40, 0.16);
+        border: 1px solid rgba(255, 141, 141, 0.16);
+    }
+    .market-card-meta {
+        justify-content: space-between;
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 12px;
+    }
+    .market-card-source {
+        margin-top: 12px;
+        min-height: 34px;
+        color: rgba(243, 236, 223, 0.62);
+        font-size: 12px;
+        line-height: 1.55;
+    }
+    .market-card-sparkline {
+        width: 100%;
+        height: 78px;
+        margin-top: 12px;
+    }
+    .market-card-footer {
+        justify-content: space-between;
+        margin-top: 14px;
+    }
+    .market-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.06);
+        color: var(--muted);
+        font-size: 12px;
+    }
+    .market-chip.is-live {
+        color: #81d4a1;
+        border-color: rgba(95, 210, 140, 0.16);
+    }
+    .market-chip.is-stale {
+        color: #ffb17d;
+        border-color: rgba(255, 177, 125, 0.18);
+    }
+    .market-card-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .market-icon-btn {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        border: 1px solid rgba(255,255,255,0.07);
+        background: rgba(255,255,255,0.04);
+        color: var(--gold-0);
+        cursor: pointer;
+        transition: transform var(--transition), border-color var(--transition), background var(--transition);
+    }
+    .market-icon-btn:hover,
+    .market-icon-btn.is-active {
+        transform: translateY(-2px);
+        border-color: rgba(199, 155, 83, 0.28);
+        background: rgba(199, 155, 83, 0.12);
+    }
+    .market-side-stack { position: sticky; top: 20px; }
+    .market-panel h3 {
+        margin: 0;
+        font-family: "Cinzel", serif;
+        font-size: 24px;
+        letter-spacing: .03em;
+    }
+    .market-panel p {
+        margin: 10px 0 0;
+        color: var(--muted);
+        line-height: 1.65;
+    }
+    .market-list {
+        margin-top: 16px;
+        display: grid;
+        gap: 12px;
+    }
+    .market-list-item {
+        padding: 14px 16px;
+        border-radius: 20px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+    .market-list-item strong {
+        display: block;
+        font-size: 16px;
+    }
+    .market-list-item span {
+        display: block;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 13px;
+    }
+    .market-provider-grid { grid-template-columns: 1fr; margin-top: 14px; }
+    .market-provider-card {
+        border-radius: 22px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+    }
+    .market-provider-card form {
+        display: grid;
+        gap: 12px;
+        margin-top: 14px;
+    }
+    .market-provider-card label {
+        display: grid;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 13px;
+    }
+    .market-provider-row { justify-content: space-between; }
+    .market-provider-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .market-provider-pill.is-ok {
+        color: #81d4a1;
+        background: rgba(43, 112, 74, 0.18);
+    }
+    .market-provider-pill.is-risk {
+        color: #ffb17d;
+        background: rgba(140, 76, 26, 0.16);
+    }
+    .market-live-pulse {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #81d4a1;
+        box-shadow: 0 0 0 0 rgba(129, 212, 161, 0.5);
+        animation: market-pulse 2s infinite;
+    }
+    .market-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-items: center;
+        padding: 20px;
+        background: rgba(6, 7, 10, 0.78);
+        backdrop-filter: blur(14px);
+        z-index: 120;
+    }
+    .market-modal.is-open { display: grid; }
+    .market-modal-card {
+        width: min(920px, 100%);
+        padding: 24px;
+        border-radius: 30px;
+        background:
+            radial-gradient(circle at top right, rgba(199, 155, 83, 0.1), transparent 24%),
+            linear-gradient(160deg, rgba(16, 19, 26, 0.98), rgba(9, 10, 14, 0.98));
+        border: 1px solid rgba(255,255,255,0.06);
+        box-shadow: 0 34px 80px rgba(0,0,0,0.4);
+    }
+    .market-modal-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+    }
+    .market-modal-grid {
+        align-items: stretch;
+        margin-top: 18px;
+    }
+    .market-modal-grid > div {
+        flex: 1 1 260px;
+        padding: 18px;
+        border-radius: 22px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+    .market-modal-grid strong {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .12em;
+    }
+    .market-modal-grid span {
+        display: block;
+        margin-top: 10px;
+        font-size: 26px;
+        font-weight: 800;
+        color: var(--gold-0);
+    }
+    .market-empty {
+        padding: 30px;
+        border-radius: 24px;
+        border: 1px dashed rgba(199, 155, 83, 0.16);
+        color: var(--muted);
+        text-align: center;
+    }
+    @@keyframes market-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(129, 212, 161, 0.42); }
+        70% { box-shadow: 0 0 0 12px rgba(129, 212, 161, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(129, 212, 161, 0); }
+    }
+    @@keyframes market-tick-up {
+        0% { box-shadow: 0 0 0 rgba(95, 210, 140, 0); border-color: rgba(255,255,255,0.05); }
+        35% { box-shadow: 0 0 0 2px rgba(95, 210, 140, 0.18), 0 0 24px rgba(95, 210, 140, 0.16); border-color: rgba(95, 210, 140, 0.32); }
+        100% { box-shadow: 0 22px 54px rgba(0,0,0,0.22); border-color: rgba(255,255,255,0.05); }
+    }
+    @@keyframes market-tick-down {
+        0% { box-shadow: 0 0 0 rgba(255, 141, 141, 0); border-color: rgba(255,255,255,0.05); }
+        35% { box-shadow: 0 0 0 2px rgba(255, 141, 141, 0.16), 0 0 24px rgba(255, 141, 141, 0.12); border-color: rgba(255, 141, 141, 0.28); }
+        100% { box-shadow: 0 22px 54px rgba(0,0,0,0.22); border-color: rgba(255,255,255,0.05); }
+    }
+    @@media (max-width: 1180px) {
+        .market-hero,
+        .market-toolbar,
+        .market-board { grid-template-columns: 1fr; }
+        .market-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .market-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .market-side-stack { position: static; }
+    }
+    @@media (max-width: 760px) {
+        .market-card-grid,
+        .market-summary-grid { grid-template-columns: 1fr; }
+        .market-hero { padding: 20px; }
+        .market-toolbar-left,
+        .market-toolbar-right { display: grid; gap: 12px; }
+        .market-search { min-width: 100%; }
+    }
+</style>
+
+<div class="market-shell" id="marketBoard"
+     data-dashboard-url="@Model.DashboardApiUrl"
+     data-detail-template="@Model.DetailApiUrlTemplate"
+     data-watchlist-url="@Model.WatchlistToggleUrl"
+     data-hub-url="@Model.HubUrl"
+     data-is-admin="@Model.IsAdmin.ToString().ToLowerInvariant()">
+    <form id="marketAntiForgeryForm" style="display:none;">
+        @Html.AntiForgeryToken()
+    </form>
+
+    <section class="surface market-hero">
+        <div>
+            <span class="badge">MGold Market Layer</span>
+            <h2>@Model.Title</h2>
+            <p>@Model.Description</p>
+
+            <div class="market-summary-grid" style="margin-top:20px;">
+                <article class="surface market-summary-card">
+                    <strong>Izleme Listesi</strong>
+                    <span id="marketWatchlistCount">@Model.Dashboard.Watchlist.Count</span>
+                </article>
+                <article class="surface market-summary-card">
+                    <strong>Toplam Enstruman</strong>
+                    <span id="marketInstrumentCount">@Model.Dashboard.Quotes.Count</span>
+                </article>
+                <article class="surface market-summary-card">
+                    <strong>En Hareketli</strong>
+                    <span id="marketTopMover">@(Model.Dashboard.TopMovers.FirstOrDefault()?.Symbol ?? "N/A")</span>
+                </article>
+                <article class="surface market-summary-card">
+                    <strong>Son Guncelleme</strong>
+                    <span id="marketUpdatedAt">@Model.Dashboard.LastUpdatedAt.ToLocalTime().ToString("HH:mm:ss")</span>
+                </article>
+            </div>
+        </div>
+
+        <div class="market-hero-stage">
+            <article class="market-spot-card">
+                <strong>Canli Akis</strong>
+                <span id="marketPulseLabel">Realtime Sync</span>
+                <p>SignalR ile yenilenen kartlar, son gercek snapshot'i ve veri kaynagini birlikte gosterir. Yeni fiyat uretmek yerine yalnizca gercek kaynaklar kullanilir.</p>
+            </article>
+            <article class="market-spot-card">
+                <strong>Premium Finans Katmani</strong>
+                <span>Bloomberg ruhu, MGold dili</span>
+                <p>Altin, doviz, gumus, emtia ve kripto fiyatlari Yahoo Finance ve TCMB benzeri gercek servislerden toplanip tek bir luks arayuzde sunulur.</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="surface market-panel">
+        <div class="market-toolbar">
+            <div class="market-toolbar-left">
+                <div class="market-search">
+                    <span>Ara</span>
+                    <input type="search" id="marketSearch" placeholder="Orn. Gram Altin, USD, Bitcoin..." />
+                </div>
+                <select id="marketCurrencySelect">
+                    @foreach (var currency in Model.Dashboard.AvailableCurrencies)
+                    {
+                        if (currency == Model.Dashboard.BaseCurrency)
+                        {
+                            <option value="@currency" selected="selected">@currency</option>
+                        }
+                        else
+                        {
+                            <option value="@currency">@currency</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <div class="market-toolbar-right">
+                <div class="market-live-row">
+                    <span class="market-live-pulse"></span>
+                    <span class="text-muted">Son akis <strong id="marketLiveTime">@Model.Dashboard.LastUpdatedAt.ToLocalTime().ToString("dd.MM HH:mm:ss")</strong></span>
+                </div>
+                <div class="market-actions">
+                    <button type="button" class="market-filter-chip is-active" data-category="all">Tum Kategoriler</button>
+                    <button type="button" class="market-filter-chip" data-category="watchlist">Favoriler</button>
+                    @if (Model.IsAdmin)
+                    {
+                        <button type="button" class="btn btn-primary" id="marketForceRefresh">Veriyi Yenile</button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="market-filter-row" id="marketCategoryTabs" style="margin-top:16px;">
+            @foreach (var category in Model.Dashboard.Categories)
+            {
+                <button type="button" class="market-filter-chip" data-category="@category.Key">@category.Label (@category.Count)</button>
+            }
+        </div>
+    </section>
+
+    <section class="market-board">
+        <div class="market-card-grid" id="marketCardGrid"></div>
+
+        <aside class="market-side-stack">
+            <article class="surface market-panel">
+                <h3>Top Movers</h3>
+                <p>Son 24 saatte en dikkat ceken hareketler.</p>
+                <div class="market-list" id="marketTopMovers"></div>
+            </article>
+
+            <article class="surface market-panel">
+                <h3>Takip Listem</h3>
+                <p>Kendi favori market enstrumanlariniz.</p>
+                <div class="market-list" id="marketWatchlist"></div>
+            </article>
+
+            @if (Model.IsAdmin)
+            {
+                <article class="surface market-panel">
+                    <div class="market-provider-row">
+                        <div>
+                            <h3>Provider Yonetimi</h3>
+                            <p>Veri kaynaklari, refresh araliklari ve fallback zinciri.</p>
+                        </div>
+                    </div>
+                    <div class="market-provider-grid">
+                        @foreach (var provider in Model.Dashboard.Providers)
+                        {
+                            <article class="market-provider-card">
+                                <div class="market-provider-row">
+                                    <div>
+                                        <strong>@provider.DisplayName</strong>
+                                        <p>@provider.ProviderKey</p>
+                                    </div>
+                                    <span class="market-provider-pill @(provider.IsHealthy ? "is-ok" : "is-risk")">@(provider.IsHealthy ? "Saglikli" : "Riskli")</span>
+                                </div>
+                                <form method="post" action="@($"{adminMarketBasePath}/providers/update")">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="Id" value="@provider.Id" />
+                                    <label>
+                                        Gorunen Ad
+                                        <input type="text" name="DisplayName" value="@provider.DisplayName" />
+                                    </label>
+                                    <div class="market-provider-actions">
+                                        <label style="flex:1 1 120px;">
+                                            Priority
+                                            <input type="number" name="Priority" value="@provider.Priority" min="1" max="9" />
+                                        </label>
+                                        <label style="flex:1 1 160px;">
+                                            Refresh (sn)
+                                            <input type="number" name="RefreshIntervalSeconds" value="@provider.RefreshIntervalSeconds" min="10" max="600" />
+                                        </label>
+                                    </div>
+                                    <div class="market-provider-actions">
+                                        <label class="market-chip">
+                                            @if (provider.IsEnabled)
+                                            {
+                                                <input type="checkbox" name="IsEnabled" value="true" checked="checked" />
+                                            }
+                                            else
+                                            {
+                                                <input type="checkbox" name="IsEnabled" value="true" />
+                                            }
+                                            Aktif
+                                        </label>
+                                        <label class="market-chip">
+                                            @if (provider.SupportsRealtime)
+                                            {
+                                                <input type="checkbox" name="SupportsRealtime" value="true" checked="checked" />
+                                            }
+                                            else
+                                            {
+                                                <input type="checkbox" name="SupportsRealtime" value="true" />
+                                            }
+                                            Realtime
+                                        </label>
+                                    </div>
+                                    <button type="submit" class="btn btn-secondary">Provider Kaydet</button>
+                                </form>
+                            </article>
+                        }
+                    </div>
+                </article>
+            }
+        </aside>
+    </section>
+</div>
+
+<div class="market-modal" id="marketDetailModal" aria-hidden="true">
+    <div class="market-modal-card">
+        <div class="market-modal-head">
+            <div>
+                <span class="badge" id="marketModalSymbol">DETAY</span>
+                <h2 id="marketModalTitle" style="margin:12px 0 0; font-family:'Cinzel', serif;">Market Detayi</h2>
+            </div>
+            <button type="button" class="market-icon-btn" id="marketModalClose">×</button>
+        </div>
+        <p class="text-muted" id="marketModalSummary" style="margin-top:12px;">Secilen enstrumanin son 24 saat davranisi.</p>
+        <div class="market-modal-grid">
+            <div>
+                <strong>Fiyat</strong>
+                <span id="marketModalPrice">0</span>
+            </div>
+            <div>
+                <strong>24 Saat Degisim</strong>
+                <span id="marketModalChange">0%</span>
+            </div>
+            <div>
+                <strong>24 Saat Aralik</strong>
+                <span id="marketModalRange">0 - 0</span>
+            </div>
+        </div>
+        <svg id="marketModalSparkline" class="market-card-sparkline" viewBox="0 0 300 90" preserveAspectRatio="none" style="height:110px; margin-top:18px;"></svg>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+<script>
+    (() => {
+        const board = document.getElementById("marketBoard");
+        if (!board) return;
+
+        const isAdmin = board.dataset.isAdmin === "true";
+        const dashboardUrl = board.dataset.dashboardUrl;
+        const detailTemplate = board.dataset.detailTemplate;
+        const watchlistUrl = board.dataset.watchlistUrl;
+        const hubUrl = board.dataset.hubUrl;
+        const antiForgeryToken = document.querySelector("#marketAntiForgeryForm input[name='__RequestVerificationToken']")?.value ?? "";
+
+        const elements = {
+            search: document.getElementById("marketSearch"),
+            currency: document.getElementById("marketCurrencySelect"),
+            grid: document.getElementById("marketCardGrid"),
+            topMovers: document.getElementById("marketTopMovers"),
+            watchlist: document.getElementById("marketWatchlist"),
+            updatedAt: document.getElementById("marketUpdatedAt"),
+            liveTime: document.getElementById("marketLiveTime"),
+            watchlistCount: document.getElementById("marketWatchlistCount"),
+            instrumentCount: document.getElementById("marketInstrumentCount"),
+            topMover: document.getElementById("marketTopMover"),
+            pulseLabel: document.getElementById("marketPulseLabel"),
+            modal: document.getElementById("marketDetailModal"),
+            modalClose: document.getElementById("marketModalClose"),
+            modalSymbol: document.getElementById("marketModalSymbol"),
+            modalTitle: document.getElementById("marketModalTitle"),
+            modalSummary: document.getElementById("marketModalSummary"),
+            modalPrice: document.getElementById("marketModalPrice"),
+            modalChange: document.getElementById("marketModalChange"),
+            modalRange: document.getElementById("marketModalRange"),
+            modalSparkline: document.getElementById("marketModalSparkline"),
+            forceRefresh: document.getElementById("marketForceRefresh")
+        };
+
+        let dashboard = @Html.Raw(initialDashboardJson);
+        let activeCategory = "all";
+        let previousPrices = new Map((dashboard.quotes ?? []).map((quote) => [quote.symbol, quote.price]));
+
+        const formatValue = (value, currency) => {
+            try {
+                return new Intl.NumberFormat("tr-TR", {
+                    style: "currency",
+                    currency,
+                    maximumFractionDigits: value >= 1000 ? 2 : 4
+                }).format(value);
+            } catch {
+                return `${value.toFixed(2)} ${currency}`;
+            }
+        };
+
+        const formatTime = (value) => new Date(value).toLocaleString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit", day: "2-digit", month: "2-digit" });
+        const isStale = (quote) => (Date.now() - new Date(quote.lastUpdatedAt).getTime()) > 180000;
+
+        const sparklineMarkup = (points, rising) => {
+            if (!points || points.length === 0) {
+                return `<div class="market-empty">Grafik verisi yok</div>`;
+            }
+
+            const width = 260;
+            const height = 78;
+            const max = Math.max(...points);
+            const min = Math.min(...points);
+            const range = Math.max(max - min, 0.0001);
+            const coordinates = points.map((point, index) => {
+                const x = (width / Math.max(points.length - 1, 1)) * index;
+                const y = height - (((point - min) / range) * (height - 8)) - 4;
+                return `${x},${y}`;
+            }).join(" ");
+
+            return `
+                <svg class="market-card-sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+                    <defs>
+                        <linearGradient id="marketGradient-${points.length}-${rising ? "up" : "down"}" x1="0" x2="1" y1="0" y2="1">
+                            <stop offset="0%" stop-color="${rising ? "#7fe0a6" : "#ff9b9b"}" stop-opacity="0.8" />
+                            <stop offset="100%" stop-color="${rising ? "#c79b53" : "#8f632b"}" stop-opacity="0.12" />
+                        </linearGradient>
+                    </defs>
+                    <polyline fill="none" stroke="url(#marketGradient-${points.length}-${rising ? "up" : "down"})" stroke-width="3" points="${coordinates}" />
+                </svg>
+            `;
+        };
+
+        const renderList = (items, target) => {
+            if (!items.length) {
+                target.innerHTML = `<div class="market-empty">Bu filtre icin veri bulunamadi.</div>`;
+                return;
+            }
+
+            target.innerHTML = items.map((item) => `
+                <article class="market-list-item">
+                    <strong>${item.displayName}</strong>
+                    <span>${formatValue(item.price, item.displayCurrency)} • ${item.change24hPercent.toFixed(2)}%</span>
+                </article>
+            `).join("");
+        };
+
+        const getFilteredQuotes = () => {
+            const search = (elements.search?.value ?? "").trim().toLowerCase();
+            return dashboard.quotes.filter((quote) => {
+                const categoryMatch = activeCategory === "all"
+                    || (activeCategory === "watchlist" ? quote.isFavorite : quote.categoryKey.toLowerCase() === activeCategory.toLowerCase());
+                const searchMatch = !search || quote.searchText.includes(search);
+                return categoryMatch && searchMatch;
+            });
+        };
+
+        const renderCards = () => {
+            const quotes = getFilteredQuotes();
+            elements.grid.innerHTML = quotes.length
+                ? quotes.map((quote) => `
+                    <article class="market-card ${previousPrices.has(quote.symbol) ? (quote.price > previousPrices.get(quote.symbol) ? "is-flash-up" : quote.price < previousPrices.get(quote.symbol) ? "is-flash-down" : "") : ""}" data-symbol="${quote.symbol}">
+                        <div class="market-card-head">
+                            <div>
+                                <div class="market-card-symbol">${quote.symbol}</div>
+                                <div class="market-card-title">${quote.displayName}</div>
+                            </div>
+                            <span class="market-chip">${quote.categoryLabel}</span>
+                        </div>
+                        <div class="market-card-price">
+                            ${formatValue(quote.price, quote.displayCurrency)}
+                            <small>/${quote.unitLabel}</small>
+                        </div>
+                        <div class="market-card-change ${quote.isRising ? "is-up" : "is-down"}">
+                            <span>${quote.isRising ? "▲" : "▼"}</span>
+                            <span>${quote.change24hPercent.toFixed(2)}%</span>
+                            <span>(${quote.change24hAbsolute.toFixed(2)})</span>
+                        </div>
+                        ${sparklineMarkup(quote.sparkline, quote.isRising)}
+                        <div class="market-card-meta">
+                            <span>24s Yuksek: ${formatValue(quote.high24h, quote.displayCurrency)}</span>
+                            <span>24s Dusuk: ${formatValue(quote.low24h, quote.displayCurrency)}</span>
+                        </div>
+                        <div class="market-card-source">${quote.note ?? quote.providerDisplayName}</div>
+                        <div class="market-card-footer">
+                            <span class="market-chip ${isStale(quote) ? "is-stale" : "is-live"}">${isStale(quote) ? "Beklemede" : "Canli"} • ${formatTime(quote.lastUpdatedAt)}</span>
+                            <div class="market-card-actions">
+                                ${!isAdmin ? `<button type="button" class="market-icon-btn market-watchlist-btn ${quote.isFavorite ? "is-active" : ""}" data-symbol="${quote.symbol}" title="Takip listesi">${quote.isFavorite ? "★" : "☆"}</button>` : ""}
+                                <button type="button" class="btn btn-secondary market-detail-btn" data-symbol="${quote.symbol}">Detay</button>
+                            </div>
+                        </div>
+                    </article>
+                `).join("")
+                : `<div class="market-empty">Arama ve filtreler icin sonuc bulunamadi.</div>`;
+
+            renderList(dashboard.topMovers, elements.topMovers);
+            renderList(dashboard.watchlist, elements.watchlist);
+            elements.updatedAt.textContent = formatTime(dashboard.lastUpdatedAt);
+            elements.liveTime.textContent = formatTime(dashboard.lastUpdatedAt);
+            elements.watchlistCount.textContent = dashboard.watchlist.length;
+            elements.instrumentCount.textContent = dashboard.quotes.length;
+            elements.topMover.textContent = dashboard.topMovers[0]?.symbol ?? "N/A";
+        };
+
+        const refreshDashboard = async (baseCurrency) => {
+            const url = new URL(dashboardUrl, window.location.origin);
+            url.searchParams.set("baseCurrency", baseCurrency || elements.currency.value);
+            const response = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+            if (!response.ok) return;
+            previousPrices = new Map((dashboard.quotes ?? []).map((quote) => [quote.symbol, quote.price]));
+            dashboard = await response.json();
+            renderCards();
+        };
+
+        const toggleWatchlist = async (symbol) => {
+            const body = new URLSearchParams();
+            body.set("symbol", symbol);
+            const response = await fetch(watchlistUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                    "RequestVerificationToken": antiForgeryToken,
+                    "X-Requested-With": "XMLHttpRequest"
+                },
+                body: body.toString()
+            });
+
+            if (!response.ok) return;
+            await refreshDashboard(elements.currency.value);
+        };
+
+        const openDetail = async (symbol) => {
+            const url = new URL(detailTemplate.replace("__symbol__", encodeURIComponent(symbol)), window.location.origin);
+            url.searchParams.set("baseCurrency", elements.currency.value);
+            const response = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+            if (!response.ok) return;
+
+            const detail = await response.json();
+            elements.modalSymbol.textContent = detail.symbol;
+            elements.modalTitle.textContent = detail.displayName;
+            elements.modalSummary.textContent = `${detail.detailSummary} Kaynak: ${detail.note ?? detail.providerDisplayName}. Son guncelleme ${formatTime(detail.lastUpdatedAt)}.`;
+            elements.modalPrice.textContent = formatValue(detail.price, detail.displayCurrency);
+            elements.modalChange.textContent = `${detail.change24hPercent.toFixed(2)}%`;
+            elements.modalRange.textContent = `${formatValue(detail.low24h, detail.displayCurrency)} / ${formatValue(detail.high24h, detail.displayCurrency)}`;
+            elements.modalSparkline.outerHTML = sparklineMarkup(detail.sparkline, detail.isRising).replace('class="market-card-sparkline"', 'id="marketModalSparkline" class="market-card-sparkline"');
+            elements.modal.classList.add("is-open");
+        };
+
+        board.addEventListener("click", async (event) => {
+            const watchlistButton = event.target.closest(".market-watchlist-btn");
+            const detailButton = event.target.closest(".market-detail-btn");
+            const filterButton = event.target.closest(".market-filter-chip");
+
+            if (watchlistButton) {
+                await toggleWatchlist(watchlistButton.dataset.symbol);
+                return;
+            }
+
+            if (detailButton) {
+                await openDetail(detailButton.dataset.symbol);
+                return;
+            }
+
+            if (filterButton && filterButton.dataset.category) {
+                document.querySelectorAll(".market-filter-chip[data-category]").forEach((button) => button.classList.remove("is-active"));
+                filterButton.classList.add("is-active");
+                activeCategory = filterButton.dataset.category;
+                renderCards();
+            }
+        });
+
+        elements.search?.addEventListener("input", renderCards);
+        elements.currency?.addEventListener("change", () => refreshDashboard(elements.currency.value));
+        elements.modalClose?.addEventListener("click", () => elements.modal.classList.remove("is-open"));
+        elements.modal?.addEventListener("click", (event) => {
+            if (event.target === elements.modal) {
+                elements.modal.classList.remove("is-open");
+            }
+        });
+
+        if (elements.forceRefresh) {
+            elements.forceRefresh.addEventListener("click", async () => {
+                const response = await fetch("@($"{adminMarketBasePath}/refresh")", {
+                    method: "POST",
+                    headers: {
+                        "RequestVerificationToken": antiForgeryToken,
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    elements.pulseLabel.textContent = `${result.providerDisplayName} • ${result.quoteCount} enstruman`;
+                    await refreshDashboard(elements.currency.value);
+                }
+            });
+        }
+
+        if (window.signalR) {
+            const connection = new window.signalR.HubConnectionBuilder()
+                .withUrl(hubUrl)
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on("market:pulse", async (payload) => {
+                elements.pulseLabel.textContent = `${payload.providerKey} • ${payload.usedFallback ? "Fallback" : "Live"}`;
+                await refreshDashboard(elements.currency.value);
+            });
+
+            connection.start().catch(() => {
+                window.setInterval(() => refreshDashboard(elements.currency.value), 60000);
+            });
+        } else {
+            window.setInterval(() => refreshDashboard(elements.currency.value), 60000);
+        }
+
+        renderCards();
+    })();
+</script>

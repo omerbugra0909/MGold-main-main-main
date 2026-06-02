@@ -1,0 +1,97 @@
+@model MGold.Controllers.AdminReportsPageViewModel
+@{
+    ViewData["Title"] = "Raporlama";
+    ViewData["PageDescription"] = "Kar/zarar, stok degeri ve urun bazli satis performansi filtrelenebilir rapor halinde listelenir.";
+    var summary = Model.Summary;
+}
+
+<section class="surface" style="padding:22px;">
+    <div class="section-head">
+        <div>
+            <span class="badge">Raporlama</span>
+            <h2>Kar/Zarar Raporu</h2>
+            <p class="text-muted">Tarih araligi secerek finansal ozetleri ve urun bazli performansi yazdirilabilir rapor olarak hazirlayin.</p>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="window.print()">Yazdir / PDF</button>
+    </div>
+
+    <form method="get" class="form-grid" style="margin-top:18px;">
+        <label>
+            Baslangic
+            <input type="date" name="startDate" value="@Model.StartDate?.ToString("yyyy-MM-dd")" />
+        </label>
+        <label>
+            Bitis
+            <input type="date" name="endDate" value="@Model.EndDate?.ToString("yyyy-MM-dd")" />
+        </label>
+        <div class="cluster" style="align-self:end;">
+            <button type="submit" class="btn btn-primary">Filtrele</button>
+            <a class="btn btn-secondary" asp-action="Reports">Temizle</a>
+        </div>
+    </form>
+</section>
+
+<section class="metric-grid" style="margin-top:18px;">
+    <article class="surface metric-card"><span>Toplam Gelir</span><strong>@summary.TotalRevenue.ToString("N2") TL</strong></article>
+    <article class="surface metric-card"><span>Satilan Mal Maliyeti</span><strong>@summary.TotalCostOfSoldGoods.ToString("N2") TL</strong></article>
+    <article class="surface metric-card"><span>Net Kar/Zarar</span><strong>@summary.NetProfitOrLoss.ToString("N2") TL</strong></article>
+    <article class="surface metric-card"><span>Stok Tahmini Deger</span><strong>@summary.InventoryEstimatedRevenue.ToString("N2") TL</strong></article>
+</section>
+
+<section class="surface" style="padding:22px; margin-top:18px;">
+    <h3>Detayli Ozet</h3>
+    <div class="data-table-wrap" style="margin-top:16px;">
+        <table class="data-table">
+            <tbody>
+                <tr><th>Toplam Yatirim</th><td>@summary.TotalInvestmentAmount.ToString("N2") TL</td></tr>
+                <tr><th>Malzeme Maliyeti</th><td>@summary.TotalMaterialCostOfSales.ToString("N2") TL</td></tr>
+                <tr><th>Iscilik Maliyeti</th><td>@summary.TotalLaborCostOfSales.ToString("N2") TL</td></tr>
+                <tr><th>Ek Maliyet</th><td>@summary.TotalAdditionalCostOfSales.ToString("N2") TL</td></tr>
+                <tr><th>Satis Islemi</th><td>@summary.TotalSalesTransactions</td></tr>
+                <tr><th>Alis Islemi</th><td>@summary.TotalBuyTransactions</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="surface" style="padding:22px; margin-top:18px;">
+    <h3>Urun Bazli Performans</h3>
+    @if (!summary.ProductBreakdown.Any())
+    {
+        <div class="empty-state" style="margin-top:16px;">Secili aralikta satis verisi bulunmuyor.</div>
+    }
+    else
+    {
+        <div class="data-table-wrap" style="margin-top:16px;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Urun</th>
+                        <th>Gelir</th>
+                        <th>Maliyet</th>
+                        <th>Kar/Zarar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in summary.ProductBreakdown)
+                    {
+                        <tr>
+                            <td>@item.ProductName</td>
+                            <td>@item.Revenue.ToString("N2") TL</td>
+                            <td>@item.Cost.ToString("N2") TL</td>
+                            <td>@item.ProfitOrLoss.ToString("N2") TL</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<style>
+    @@media print {
+        .admin-sidebar, .admin-topbar, .btn, form { display: none !important; }
+        body { background: #fff !important; color: #111 !important; }
+        .surface, .metric-card { box-shadow: none !important; border: 1px solid #ddd !important; color: #111 !important; }
+    }
+</style>

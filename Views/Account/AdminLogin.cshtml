@@ -1,0 +1,98 @@
+@model MGold.Controllers.AdminLoginViewModel
+@{
+    ViewData["Title"] = "Yonetim Girisi";
+    ViewData["PageDescription"] = "Sistem admini ve firma yoneticileri icin netlestirilmis panel girisi.";
+    var returnUrl = ViewData["ReturnUrl"]?.ToString();
+}
+
+@section Styles {
+    <style>
+        .admin-auth {
+            width: min(880px, 100%);
+            margin: 0 auto;
+            padding: 0;
+            display: grid;
+            grid-template-columns: .92fr 1.08fr;
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(17,19,25,0.96), rgba(43,31,18,0.94));
+        }
+        .auth-side {
+            padding: 32px;
+            background: linear-gradient(180deg, rgba(227,201,145,0.12), rgba(255,255,255,0.03));
+            border-right: 1px solid rgba(255,214,116,0.1);
+            display: grid;
+            align-content: space-between;
+            gap: 26px;
+        }
+        .auth-side h2 {
+            margin: 0 0 10px;
+            font-family: "Cinzel", serif;
+            font-size: clamp(34px, 5vw, 48px);
+            color: var(--gold-0);
+            line-height: 1;
+        }
+        .auth-side p { color: var(--muted); line-height: 1.7; margin: 0; }
+        .auth-form {
+            display: grid;
+            gap: 14px;
+            padding: 32px;
+        }
+        .auth-form h3 {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 24px;
+            color: var(--ink);
+        }
+        .admin-note {
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(255,214,116,0.08);
+            border: 1px solid rgba(255,214,116,0.12);
+            color: var(--muted);
+        }
+        .login-shortcuts {
+            display: grid;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        @@media (max-width: 760px) {
+            .admin-auth { grid-template-columns: 1fr; }
+            .auth-side { border-right: 0; border-bottom: 1px solid rgba(255,214,116,0.1); }
+        }
+    </style>
+}
+
+<section class="surface admin-auth">
+    <div class="auth-side">
+        <div>
+            <span class="badge">Back Office</span>
+            <h2>Yonetim Girisi</h2>
+            <p>Admin ve firma yoneticisi hesaplari buradan panele gecer. Personel icin calisma alani, musteriler icin musteri girisi ayridir.</p>
+        </div>
+        <div class="login-shortcuts">
+            <div>Sistem admini: <strong>admin</strong> / <strong>0909</strong></div>
+            <div>Firma yoneticisi: <strong>yonetici</strong> / <strong>Demo123*</strong></div>
+        </div>
+    </div>
+
+    <form method="post" class="auth-form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
+        <h3>Panel oturumu ac</h3>
+        @Html.ValidationSummary(false)
+        <label>
+            <span>Kullanici Adi</span>
+            <input asp-for="Username" />
+        </label>
+        <label>
+            <span>Sifre</span>
+            <input asp-for="Password" type="password" />
+        </label>
+        <button type="submit" class="btn btn-primary">Panele Gir</button>
+        <div class="admin-note">
+            Personel hesabiyla devam edecekseniz <a href="/workspace/login"><strong>Calisma Alani</strong></a> girisini kullanin.
+            Sifrenizi unuttuysaniz <a href="/auth/forgot-password"><strong>sifre yenileme</strong></a> akisini baslatin.
+        </div>
+    </form>
+</section>

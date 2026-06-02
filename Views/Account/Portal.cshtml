@@ -1,0 +1,290 @@
+@{
+    ViewData["Title"] = "Guvenli Giris";
+    ViewData["PageDescription"] = "Kullanici girisi, kayit ve admin girisini premium marka deneyimiyle yonetin.";
+    ViewData["BrandMarkMode"] = "hero";
+    ViewData["BrandMarkTitle"] = "MGold";
+    ViewData["BrandMarkSubtitle"] = "Forged for luxury operations";
+}
+
+@section Styles {
+    <style>
+        .portal-stack { display: grid; gap: 24px; }
+        .portal-hero {
+            display: grid;
+            grid-template-columns: .78fr 1.22fr;
+            gap: 18px;
+            align-items: center;
+            padding: 30px;
+            min-height: 840px;
+        }
+        .portal-copy {
+            padding: 8px 18px 8px 10px;
+            display: grid;
+            gap: 18px;
+        }
+        .portal-logo {
+            display: grid;
+            gap: 10px;
+        }
+        .portal-logo strong {
+            font-family: "Cinzel", serif;
+            color: var(--gold-0);
+            font-size: clamp(42px, 5vw, 62px);
+            letter-spacing: .04em;
+        }
+        .portal-logo span {
+            color: var(--muted);
+            font-size: 16px;
+        }
+        .portal-copy h1 {
+            margin: 4px 0 0;
+            font-family: "Cinzel", serif;
+            font-size: clamp(36px, 4.4vw, 56px);
+            line-height: .98;
+            letter-spacing: .05em;
+        }
+        .portal-copy p {
+            max-width: 430px;
+            margin: 0;
+            color: rgba(247, 240, 222, 0.72);
+            line-height: 1.75;
+        }
+        .portal-entry-list,
+        .portal-footer-cards,
+        .portal-signals {
+            display: grid;
+            gap: 12px;
+        }
+        .portal-entry-list { margin-top: 6px; }
+        .portal-entry {
+            padding: 18px 20px;
+            border-radius: 22px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+            border: 1px solid rgba(255,255,255,0.06);
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+            transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition), background var(--transition);
+        }
+        .portal-entry:hover {
+            transform: translateX(6px);
+            border-color: rgba(199, 155, 83, 0.22);
+            box-shadow: 0 24px 44px rgba(0,0,0,0.34);
+            background: linear-gradient(135deg, rgba(199, 155, 83, 0.12), rgba(255,255,255,0.03));
+        }
+        .portal-entry strong {
+            font-size: 16px;
+            color: #f6ead2;
+        }
+        .portal-entry span {
+            color: var(--muted);
+            font-size: 13px;
+            display: block;
+            margin-top: 4px;
+        }
+        .portal-entry-arrow {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: var(--gold-0);
+            font-size: 20px;
+        }
+        .portal-entry-primary {
+            background: linear-gradient(135deg, rgba(227, 201, 145, 0.18), rgba(143, 99, 43, 0.3));
+            border-color: rgba(199, 155, 83, 0.24);
+        }
+        .portal-signals {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            margin-top: auto;
+        }
+        .signal-card {
+            padding: 16px;
+            border-radius: 22px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255, 214, 116, 0.08);
+        }
+        .signal-card strong {
+            display: block;
+            color: rgba(199, 155, 83, 0.76);
+            font-size: 11px;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+        }
+        .signal-card span {
+            display: block;
+            margin-top: 12px;
+            font-family: "Cinzel", serif;
+            font-size: 24px;
+            color: var(--gold-0);
+        }
+        .portal-stage {
+            min-height: 100%;
+            display: grid;
+            place-items: center;
+            position: relative;
+            isolation: isolate;
+        }
+        .portal-stage::before {
+            content: "";
+            position: absolute;
+            inset: 7% 5%;
+            border-radius: 50%;
+            background:
+                radial-gradient(circle, rgba(199, 155, 83, 0.13), transparent 58%),
+                radial-gradient(circle at 20% 20%, rgba(143, 197, 218, 0.08), transparent 18%),
+                radial-gradient(circle at 80% 84%, rgba(145, 99, 72, 0.08), transparent 16%);
+            filter: blur(18px);
+        }
+        .portal-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+        }
+        .portal-card {
+            padding: 26px;
+        }
+        .portal-card h2 {
+            margin: 16px 0 0;
+            font-family: "Cinzel", serif;
+            font-size: 28px;
+            letter-spacing: .03em;
+        }
+        .portal-card p {
+            margin: 14px 0 20px;
+            color: var(--muted);
+            line-height: 1.72;
+            min-height: 108px;
+        }
+        .portal-card .btn { width: 100%; }
+        .portal-card:hover .badge {
+            background: rgba(255, 214, 116, 0.14);
+            transform: translateY(-1px);
+        }
+        .portal-footer-cards {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .portal-note {
+            padding: 20px 22px;
+        }
+        .portal-note strong {
+            display: block;
+            font-family: "Cinzel", serif;
+            color: var(--gold-1);
+            font-size: 24px;
+        }
+        .portal-note p {
+            color: var(--muted);
+            margin: 10px 0 0;
+            line-height: 1.7;
+        }
+        @@media (max-width: 1040px) {
+            .portal-hero,
+            .portal-grid { grid-template-columns: 1fr; }
+            .portal-signals { grid-template-columns: 1fr; }
+            .portal-footer-cards { grid-template-columns: 1fr; }
+            .portal-stage { min-height: 320px; }
+        }
+    </style>
+}
+
+<div class="portal-stack">
+    <section class="hero portal-hero">
+        <div class="portal-copy">
+            <div class="portal-logo">
+                <strong>MGold</strong>
+                <span>Kuyumculuk Yonetim Sistemi</span>
+            </div>
+            <span class="badge">MGold Motion Signature</span>
+            <h1>Dort rol. Tek profesyonel platform omurgasi.</h1>
+            <p>Sistem admini, firma yoneticisi, personel ve musteri deneyimleri artik ayri giris akislarina ve net yetki sinirlarina sahip. MGold giris merkezi bu cok katmanli mimariyi premium tasarim diliyle sunuyor.</p>
+            <div class="portal-entry-list">
+                <a href="/auth/login" class="portal-entry portal-entry-primary">
+                    <div>
+                        <strong>Musteri Girisi</strong>
+                        <span>Urun, siparis ve hesap alaniniza gecin</span>
+                    </div>
+                    <div class="portal-entry-arrow">→</div>
+                </a>
+                <a href="/workspace/login" class="portal-entry">
+                    <div>
+                        <strong>Calisma Alani</strong>
+                        <span>Yetkin kullanici veya personel olarak giris yapin</span>
+                    </div>
+                    <div class="portal-entry-arrow">→</div>
+                </a>
+                <a href="/auth/register" class="portal-entry">
+                    <div>
+                        <strong>Musteri Kaydi</strong>
+                        <span>Yeni musteri profili olusturun</span>
+                    </div>
+                    <div class="portal-entry-arrow">→</div>
+                </a>
+                <a href="/admin/login" class="portal-entry">
+                    <div>
+                        <strong>Sistem Admini</strong>
+                        <span>Platform ve firma yonetim merkezini acin</span>
+                    </div>
+                    <div class="portal-entry-arrow">→</div>
+                </a>
+            </div>
+            <div class="portal-signals">
+                <article class="signal-card">
+                    <strong>Platform</strong>
+                    <span>System Admin</span>
+                </article>
+                <article class="signal-card">
+                    <strong>Workspace</strong>
+                    <span>Manager + Employee</span>
+                </article>
+                <article class="signal-card">
+                    <strong>Commerce</strong>
+                    <span>Customer</span>
+                </article>
+            </div>
+        </div>
+        <div class="portal-stage">
+            @await Html.PartialAsync("_MGoldBrandMark")
+        </div>
+    </section>
+
+    <section class="portal-footer-cards">
+        <article class="surface portal-note">
+            <strong>Guvenli Altyapi</strong>
+            <p>Verileriniz rol bazli yetki sistemi, ayrik portaller ve kayit altina alinan islemler ile korunur.</p>
+        </article>
+        <article class="surface portal-note">
+            <strong>Premium Deneyim</strong>
+            <p>Altin, siyah ve metalik tonlarla desteklenen hareketli tasarim dili uygulamanin tamaminda tutarli kalir.</p>
+        </article>
+        <article class="surface portal-note">
+            <strong>Hizli ve Akici</strong>
+            <p>Akilli loading, reveal ve hover animasyonlari sinematik gorunurken performans odakli calisir.</p>
+        </article>
+    </section>
+
+    <section class="portal-grid">
+        <article class="surface portal-card">
+            <span class="badge">Customer Access</span>
+            <h2>Kullanici Girisi</h2>
+            <p>Mevcut musteriler urunleri goruntulemek, siparis vermek, favorilerini yonetmek ve kendi panelinden tum hesap hareketlerini takip etmek icin bu akisa girer.</p>
+            <a href="/auth/login" class="btn btn-primary">Kullanici Girisi</a>
+        </article>
+        <article class="surface portal-card">
+            <span class="badge">New Customer</span>
+            <h2>Kullanici Kaydi</h2>
+            <p>Yeni musteri hesabi olusturun; siparis akisini, iletisim kayitlarini ve urun favorilerini daha ilk oturumdan itibaren modern bir deneyimde toplayin.</p>
+            <a href="/auth/register" class="btn btn-primary">Kullanici Kaydi</a>
+        </article>
+        <article class="surface portal-card">
+            <span class="badge">Admin Portal</span>
+            <h2>Admin Girisi</h2>
+            <p>Kurumsal yonetim paneli ayrilmis route yapisiyla, stoktan karlilik ozetine kadar tum operasyonlarin performansli ve premium kontrol merkezini acar.</p>
+            <a href="/admin/login" class="btn btn-secondary">Admin Girisi</a>
+        </article>
+    </section>
+</div>

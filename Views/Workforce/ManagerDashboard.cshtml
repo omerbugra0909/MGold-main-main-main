@@ -1,0 +1,105 @@
+@using MGold.Domain.Enums
+@model MGold.Application.DTOs.CompanyWorkspaceDashboardDto
+@{
+    var operationsBase = User.IsInRole("SystemAdmin") ? "/admin" : "/owner";
+    ViewData["Title"] = "Firma Operasyon Merkezi";
+    ViewData["PageDescription"] = "Firma bazli analizler, gorev atama ve siparis yogunlugu merkezi.";
+}
+
+<style>
+    .wf-grid, .wf-cards, .wf-series, .wf-list { display:grid; gap:16px; }
+    .wf-cards { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .wf-grid { grid-template-columns: 1.15fr .85fr; align-items:start; }
+    .wf-card, .wf-panel { padding:22px; }
+    .wf-value { display:block; margin-top:12px; font-size:30px; font-weight:800; color:var(--gold-0); }
+    .wf-series { grid-template-columns: 1fr 1fr; }
+    .wf-list article { padding:16px; border-radius:18px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); }
+    @@media (max-width: 1200px) { .wf-cards, .wf-grid, .wf-series { grid-template-columns: 1fr; } }
+</style>
+
+<section class="wf-cards">
+    <article class="surface wf-card"><strong>Firma</strong><span class="wf-value">@Model.CompanyName</span></article>
+    <article class="surface wf-card"><strong>Toplam Ciro</strong><span class="wf-value">@Model.TotalRevenue.ToString("N0") TL</span></article>
+    <article class="surface wf-card"><strong>Urunler</strong><span class="wf-value">@Model.TotalProducts</span></article>
+    <article class="surface wf-card"><strong>Acik Siparis</strong><span class="wf-value">@Model.OpenOrders</span></article>
+    <article class="surface wf-card"><strong>Aktif Calisan</strong><span class="wf-value">@Model.ActiveEmployees</span></article>
+    <article class="surface wf-card"><strong>Bekleyen Gorev</strong><span class="wf-value">@Model.PendingTasks</span></article>
+</section>
+
+<section class="wf-grid" style="margin-top:18px;">
+    <div class="wf-series">
+        <article class="surface wf-panel">
+            <span class="badge">Siparis Yuk</span>
+            <h3>Gunluk Siparis Yogunlugu</h3>
+            <div class="wf-list" style="margin-top:14px;">
+                @foreach (var item in Model.DailyOrderLoad)
+                {
+                    <article><strong>@item.Label</strong><div class="text-muted">@item.Value siparis</div></article>
+                }
+            </div>
+        </article>
+        <article class="surface wf-panel">
+            <span class="badge">Satis Trendi</span>
+            <h3>Haftalik / Aylik / Yillik</h3>
+            <div class="wf-list" style="margin-top:14px;">
+                @foreach (var item in Model.WeeklySalesTrend.Concat(Model.MonthlySalesTrend.Take(3)).Concat(Model.YearlySalesTrend.Take(2)))
+                {
+                    <article><strong>@item.Label</strong><div class="text-muted">@item.Value.ToString("N0") TL</div></article>
+                }
+            </div>
+        </article>
+        <article class="surface wf-panel">
+            <span class="badge">Urun Performansi</span>
+            <div class="wf-list" style="margin-top:14px;">
+                @foreach (var item in Model.ProductPerformance)
+                {
+                    <article><strong>@item.Label</strong><div class="text-muted">@item.Value.ToString("N0") TL</div></article>
+                }
+            </div>
+        </article>
+        <article class="surface wf-panel">
+            <span class="badge">Calisan Performansi</span>
+            <div class="wf-list" style="margin-top:14px;">
+                @foreach (var item in Model.EmployeePerformance)
+                {
+                    <article><strong>@item.Label</strong><div class="text-muted">@item.Value is akisi</div></article>
+                }
+            </div>
+        </article>
+    </div>
+
+    <div class="wf-list">
+        <article class="surface wf-panel">
+            <span class="badge">Gorev Atama</span>
+            <h3>Yeni Gorev</h3>
+            <form method="post" action="@($"{operationsBase}/tasks")" style="display:grid; gap:12px; margin-top:14px;">
+                @Html.AntiForgeryToken()
+                <input type="text" name="Title" placeholder="Gorev basligi" required />
+                <textarea name="Description" placeholder="Aciklama"></textarea>
+                <input type="number" name="AssignedToUserId" placeholder="Calisan kullanici ID" required />
+                <select name="Priority">
+                    <option value="@TaskPriority.Low">Dusuk</option>
+                    <option value="@TaskPriority.Medium" selected>Orta</option>
+                    <option value="@TaskPriority.High">Yuksek</option>
+                    <option value="@TaskPriority.Critical">Kritik</option>
+                </select>
+                <input type="datetime-local" name="DueDate" />
+                <button type="submit" class="btn btn-primary">Gorev Ata</button>
+            </form>
+        </article>
+
+        <article class="surface wf-panel">
+            <span class="badge">Guncel Gorevler</span>
+            <div class="wf-list" style="margin-top:14px;">
+                @foreach (var task in Model.Tasks)
+                {
+                    <article>
+                        <strong>@task.Title</strong>
+                        <div class="text-muted" style="margin-top:8px;">@task.AssignedTo • @task.Priority • @task.Status</div>
+                        <div class="text-muted" style="margin-top:6px;">Teslim: @(task.DueDate?.ToString("dd.MM.yyyy HH:mm") ?? "-")</div>
+                    </article>
+                }
+            </div>
+        </article>
+    </div>
+</section>
