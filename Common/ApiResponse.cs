@@ -15,7 +15,7 @@ public class ApiResponse<T>
             Data = data
         };
 
-    public static ApiResponse<T> Fail(string message, params IReadOnlyList<string> errors)
+    public static ApiResponse<T> Fail(string message, params string[] errors)
         => new()
         {
             Success = false,
