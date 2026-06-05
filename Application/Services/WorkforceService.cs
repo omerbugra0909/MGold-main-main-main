@@ -53,7 +53,7 @@ public class WorkforceService(
     {
         accessControlService.EnsureManagerOrSystemAdmin();
 
-        var companyId = ResolveCompanyIdOrThrow();
+        var companyId = await ResolveCompanyIdAsync(cancellationToken);
         var company = await context.Companies.AsNoTracking().FirstAsync(x => x.Id == companyId, cancellationToken);
         var products = await context.Products.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(cancellationToken);
         var orders = await context.Orders.AsNoTracking().Where(x => x.CompanyId == companyId).Include(x => x.AssignedEmployeeUser).ToListAsync(cancellationToken);
@@ -316,8 +316,29 @@ public class WorkforceService(
             .FirstAsync(cancellationToken);
     }
 
-    private int ResolveCompanyIdOrThrow()
-        => currentUserService.CompanyId ?? throw new AuthorizationException("Firma baglami bulunamadi.");
+    private async Task<int> ResolveCompanyIdAsync(CancellationToken cancellationToken)
+    {
+        if (currentUserService.CompanyId is int scopedCompanyId)
+        {
+            return scopedCompanyId;
+        }
+
+        if (currentUserService.IsInRole(RoleConstants.SystemAdmin))
+        {
+            var firstCompanyId = await context.Companies
+                .AsNoTracking()
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.Id)
+                .Select(x => (int?)x.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (firstCompanyId.HasValue)
+            {
+                return firstCompanyId.Value;
+            }
+        }
+
+        throw new AuthorizationException("Firma baglami bulunamadi.");
+    }
 
     private static CompanySummaryDto MapCompanySummary(Company company)
         => new()

@@ -60,7 +60,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Company)
                 .WithMany(x => x.Products)
                 .HasForeignKey(x => x.CompanyId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Customer>(entity =>
@@ -72,7 +72,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Company)
                 .WithMany(x => x.Customers)
                 .HasForeignKey(x => x.CompanyId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Transaction>(entity =>
@@ -100,12 +100,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Customer)
                 .WithMany(x => x.Transactions)
                 .HasForeignKey(x => x.CustomerId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(x => x.Company)
                 .WithMany(x => x.Transactions)
                 .HasForeignKey(x => x.CompanyId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<GoldPrice>(entity =>
@@ -131,17 +131,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Customer)
                 .WithMany()
                 .HasForeignKey(x => x.CustomerId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(x => x.Company)
                 .WithMany(x => x.Users)
                 .HasForeignKey(x => x.CompanyId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(x => x.CreatedByUser)
                 .WithMany(x => x.ManagedUsers)
                 .HasForeignKey(x => x.CreatedByUserId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<AccountVerificationToken>(entity =>
@@ -157,7 +157,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.AppUser)
                 .WithMany(x => x.VerificationTokens)
                 .HasForeignKey(x => x.AppUserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>
@@ -175,7 +175,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.AppUser)
                 .WithMany(x => x.RefreshTokens)
                 .HasForeignKey(x => x.AppUserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<AuditLog>(entity =>
@@ -208,12 +208,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Company)
                 .WithMany(x => x.Orders)
                 .HasForeignKey(x => x.CompanyId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(x => x.AssignedEmployeeUser)
                 .WithMany()
                 .HasForeignKey(x => x.AssignedEmployeeUserId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<OrderItem>(entity =>
@@ -225,7 +225,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Order)
                 .WithMany(x => x.Items)
                 .HasForeignKey(x => x.OrderId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(x => x.Product)
                 .WithMany(x => x.OrderItems)
@@ -254,7 +254,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Order)
                 .WithMany(x => x.Payments)
                 .HasForeignKey(x => x.OrderId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(x => x.ParentPayment)
                 .WithMany()
@@ -275,7 +275,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Order)
                 .WithMany(x => x.Invoices)
                 .HasForeignKey(x => x.OrderId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<OrderHistoryEntry>(entity =>
@@ -292,7 +292,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Order)
                 .WithMany(x => x.HistoryEntries)
                 .HasForeignKey(x => x.OrderId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<ProductReview>(entity =>
@@ -303,12 +303,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Product)
                 .WithMany(x => x.Reviews)
                 .HasForeignKey(x => x.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(x => x.Customer)
                 .WithMany(x => x.Reviews)
                 .HasForeignKey(x => x.CustomerId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<CustomerFavorite>(entity =>
@@ -319,12 +319,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Customer)
                 .WithMany(x => x.Favorites)
                 .HasForeignKey(x => x.CustomerId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(x => x.Product)
                 .WithMany(x => x.CustomerFavorites)
                 .HasForeignKey(x => x.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Notification>(entity =>
@@ -387,7 +387,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.AppUser)
                 .WithMany()
                 .HasForeignKey(x => x.AppUserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<WorkTask>(entity =>
@@ -399,7 +399,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Company)
                 .WithMany(x => x.Tasks)
                 .HasForeignKey(x => x.CompanyId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(x => x.AssignedToUser)
                 .WithMany(x => x.AssignedTasks)
@@ -421,7 +421,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.WorkTask)
                 .WithMany(x => x.HistoryEntries)
                 .HasForeignKey(x => x.WorkTaskId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(x => x.ActorUser)
                 .WithMany(x => x.TaskHistoryEntries)

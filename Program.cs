@@ -603,6 +603,7 @@ static void SeedDatabase(WebApplication app, bool seedDemoData)
 {
     if (!seedDemoData)
     {
+        SeedProductionEssentials(app);
         return;
     }
 
@@ -734,6 +735,33 @@ static void SeedDatabase(WebApplication app, bool seedDemoData)
 
     db.SaveChanges();
     SeedAdditionalDemoData(db);
+}
+
+static void SeedProductionEssentials(WebApplication app)
+{
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<AppUser>>();
+        var companyProfile = app.Configuration.GetSection(CompanyProfileSettings.SectionName).Get<CompanyProfileSettings>() ?? new CompanyProfileSettings();
+        var companyId = EnsureCompany(
+            db,
+            name: string.IsNullOrWhiteSpace(companyProfile.Name) ? "MGold Kuyumculuk" : companyProfile.Name,
+            code: "MGOLD",
+            email: string.IsNullOrWhiteSpace(companyProfile.Email) ? "info@mgold.local" : companyProfile.Email,
+            phone: string.IsNullOrWhiteSpace(companyProfile.Phone) ? "+905550000000" : companyProfile.Phone,
+            address: string.IsNullOrWhiteSpace(companyProfile.Address) ? "Istanbul" : companyProfile.Address);
+
+        EnsureBootstrapSystemAdmin(db, passwordHasher, app.Configuration);
+        SeedMarketProviders(db);
+
+        app.Logger.LogInformation("Production essentials checked. Bootstrap company id: {CompanyId}", companyId);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Production essentials could not be seeded. Run the production SQL install script before using database-backed features.");
+    }
 }
 
 static void ResetSqliteDevelopmentDatabase(string? connectionString)
@@ -1343,6 +1371,55 @@ static void SeedMarketProviders(AppDbContext db)
         fallbackProvider.Priority = 9;
         fallbackProvider.UpdatedAt = DateTime.UtcNow;
     }
+
+    db.SaveChanges();
+}
+
+static void EnsureBootstrapSystemAdmin(
+    AppDbContext db,
+    IPasswordHasher<AppUser> passwordHasher,
+    IConfiguration configuration)
+{
+    if (db.AppUsers.Any(x => x.Role == RoleConstants.SystemAdmin))
+    {
+        return;
+    }
+
+    var section = configuration.GetSection("BootstrapAdmin");
+    var username = (section["Username"] ?? "admin").Trim().ToLowerInvariant();
+    var fullName = section["FullName"] ?? "Platform Yoneticisi";
+    var email = (section["Email"] ?? "admin@mgold.local").Trim().ToLowerInvariant();
+    var phone = NormalizePhone(section["Phone"] ?? "+905550000000");
+    var password = section["Password"] ?? "0909";
+
+    var user = db.AppUsers.FirstOrDefault(x => x.Username == username || x.Email == email);
+    if (user is null)
+    {
+        user = new AppUser
+        {
+            Username = username,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.AppUsers.Add(user);
+    }
+
+    user.FullName = fullName;
+    user.Email = email;
+    user.Phone = phone;
+    user.Role = RoleConstants.SystemAdmin;
+    user.CompanyId = null;
+    user.CustomerId = null;
+    user.CreatedByUserId = null;
+    user.IsActive = true;
+    user.EmailConfirmed = true;
+    user.EmailConfirmedAt ??= DateTime.UtcNow;
+    user.PhoneConfirmed = true;
+    user.PhoneConfirmedAt ??= DateTime.UtcNow;
+    user.SecurityStamp = string.IsNullOrWhiteSpace(user.SecurityStamp)
+        ? Guid.NewGuid().ToString("N")
+        : user.SecurityStamp;
+    user.PasswordChangedAt ??= DateTime.UtcNow;
+    user.PasswordHash = passwordHasher.HashPassword(user, password);
 
     db.SaveChanges();
 }

@@ -9,11 +9,14 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     public AppDbContext CreateDbContext(string[] args)
     {
         var basePath = ResolveBasePath();
+        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+            ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+            ?? "Production";
 
         var configuration = new ConfigurationBuilder()
             .SetBasePath(basePath)
             .AddJsonFile("appsettings.json", optional: false)
-            .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddJsonFile($"appsettings.{environment}.json", optional: true)
             .AddEnvironmentVariables()
             .Build();
 
