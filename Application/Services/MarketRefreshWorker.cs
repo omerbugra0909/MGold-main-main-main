@@ -33,7 +33,8 @@ public class MarketRefreshWorker(
                     {
                         LastUpdatedAt = result.LastUpdatedAt,
                         ProviderKey = result.ProviderKey,
-                        UsedFallback = result.UsedFallback
+                        UsedFallback = result.UsedFallback,
+                        Status = result.UsedFallback ? "recentSnapshot" : "active/realtime"
                     }, CancellationToken.None);
                 }
             }

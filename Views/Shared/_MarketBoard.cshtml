@@ -249,6 +249,22 @@
         color: #ffb17d;
         border-color: rgba(255, 177, 125, 0.18);
     }
+    .market-chip.is-warning {
+        color: #ffd27d;
+        border-color: rgba(255, 210, 125, 0.22);
+        background: rgba(140, 91, 21, 0.14);
+    }
+    .market-chip.is-error {
+        color: #ff8d8d;
+        border-color: rgba(255, 141, 141, 0.2);
+        background: rgba(124, 40, 40, 0.16);
+    }
+    .market-card-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+    }
     .market-card-actions {
         display: flex;
         gap: 10px;
@@ -476,8 +492,8 @@
 
         <div class="market-hero-stage">
             <article class="market-spot-card">
-                <strong>Canli Akis</strong>
-                <span id="marketPulseLabel">Realtime Sync</span>
+                <strong>Canlı Akış</strong>
+                <span id="marketPulseLabel">Son Snapshot</span>
                 <p>SignalR ile yenilenen kartlar, son gercek snapshot'i ve veri kaynagini birlikte gosterir. Yeni fiyat uretmek yerine yalnizca gercek kaynaklar kullanilir.</p>
             </article>
             <article class="market-spot-card">
@@ -546,7 +562,7 @@
 
             <article class="surface market-panel">
                 <h3>Takip Listem</h3>
-                <p>Kendi favori market enstrumanlariniz.</p>
+                <p>Kendi favori market enstrümanlarınız.</p>
                 <div class="market-list" id="marketWatchlist"></div>
             </article>
 
@@ -631,7 +647,7 @@
             </div>
             <button type="button" class="market-icon-btn" id="marketModalClose">×</button>
         </div>
-        <p class="text-muted" id="marketModalSummary" style="margin-top:12px;">Secilen enstrumanin son 24 saat davranisi.</p>
+        <p class="text-muted" id="marketModalSummary" style="margin-top:12px;">Seçilen enstrümanın son 24 saat davranışı.</p>
         <div class="market-modal-grid">
             <div>
                 <strong>Fiyat</strong>
@@ -705,6 +721,41 @@
 
         const formatTime = (value) => new Date(value).toLocaleString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit", day: "2-digit", month: "2-digit" });
         const isStale = (quote) => (Date.now() - new Date(quote.lastUpdatedAt).getTime()) > 180000;
+        const statusLabels = {
+            "active/realtime": "Canlı",
+            recentSnapshot: "Son Snapshot",
+            stale: "Gecikmeli",
+            error: "Veri Hatası",
+            loading: "Yükleniyor"
+        };
+        const sourceTypeLabels = {
+            live_market: "Canlı piyasa",
+            local_reference: "Yerel referans",
+            derived_formula: "Formül",
+            manual_fallback: "Manuel fallback"
+        };
+        const statusClass = (status) => status === "active/realtime"
+            ? "is-live"
+            : status === "error" ? "is-error" : "is-stale";
+        const statusLabel = (status) => statusLabels[status] ?? "Son Snapshot";
+        const sourceTypeLabel = (type) => sourceTypeLabels[type] ?? "Kaynak doğrulanamadı";
+        const qualityBadges = (quote) => {
+            const badges = [];
+            if (quote.dataStatus === "stale") {
+                badges.push({ label: "Gecikmeli", css: "is-stale" });
+            }
+            if (quote.dataQualityStatus === "warning" || (quote.qualityWarnings ?? []).length > 0) {
+                badges.push({ label: "Veri kontrol edilmeli", css: "is-warning" });
+            }
+            if (quote.dataQualityStatus === "error") {
+                badges.push({ label: "Veri Hatası", css: "is-error" });
+            }
+            if ((quote.qualityWarnings ?? []).some((warning) => warning.toLowerCase().includes("source"))) {
+                badges.push({ label: "Kaynak doğrulanamadı", css: "is-warning" });
+            }
+
+            return badges.map((badge) => `<span class="market-chip ${badge.css}">${badge.label}</span>`).join("");
+        };
 
         const sparklineMarkup = (points, rising) => {
             if (!points || points.length === 0) {
@@ -782,12 +833,17 @@
                         </div>
                         ${sparklineMarkup(quote.sparkline, quote.isRising)}
                         <div class="market-card-meta">
-                            <span>24s Yuksek: ${formatValue(quote.high24h, quote.displayCurrency)}</span>
-                            <span>24s Dusuk: ${formatValue(quote.low24h, quote.displayCurrency)}</span>
+                            <span>24s Yüksek: ${formatValue(quote.high24h, quote.displayCurrency)}</span>
+                            <span>24s Düşük: ${formatValue(quote.low24h, quote.displayCurrency)}</span>
                         </div>
-                        <div class="market-card-source">${quote.note ?? quote.providerDisplayName}</div>
+                        <div class="market-card-source">
+                            ${quote.note ?? quote.providerDisplayName}
+                            <br />
+                            <span>${sourceTypeLabel(quote.sourceType)}${quote.calculationBasis ? ` - ${quote.calculationBasis}` : ""}</span>
+                        </div>
+                        <div class="market-card-badges">${qualityBadges(quote)}</div>
                         <div class="market-card-footer">
-                            <span class="market-chip ${isStale(quote) ? "is-stale" : "is-live"}">${isStale(quote) ? "Beklemede" : "Canli"} • ${formatTime(quote.lastUpdatedAt)}</span>
+                            <span class="market-chip ${statusClass(quote.dataStatus)}">${statusLabel(quote.dataStatus)} - ${formatTime(quote.lastUpdatedAt)}</span>
                             <div class="market-card-actions">
                                 ${!isAdmin ? `<button type="button" class="market-icon-btn market-watchlist-btn ${quote.isFavorite ? "is-active" : ""}" data-symbol="${quote.symbol}" title="Takip listesi">${quote.isFavorite ? "★" : "☆"}</button>` : ""}
                                 <button type="button" class="btn btn-secondary market-detail-btn" data-symbol="${quote.symbol}">Detay</button>
@@ -795,7 +851,16 @@
                         </div>
                     </article>
                 `).join("")
-                : `<div class="market-empty">Arama ve filtreler icin sonuc bulunamadi.</div>`;
+                : `<div class="market-empty">Arama ve filtreler için sonuç bulunamadı.</div>`;
+
+            elements.grid.querySelectorAll(".market-card").forEach((card) => {
+                const quote = quotes.find((item) => item.symbol === card.dataset.symbol);
+                const statusChip = card.querySelector(".market-card-footer > .market-chip");
+                if (quote && statusChip) {
+                    statusChip.className = `market-chip ${statusClass(quote.dataStatus)}`;
+                    statusChip.textContent = `${statusLabel(quote.dataStatus)} - ${formatTime(quote.lastUpdatedAt)}`;
+                }
+            });
 
             renderList(dashboard.topMovers, elements.topMovers);
             renderList(dashboard.watchlist, elements.watchlist);
@@ -842,7 +907,9 @@
             const detail = await response.json();
             elements.modalSymbol.textContent = detail.symbol;
             elements.modalTitle.textContent = detail.displayName;
-            elements.modalSummary.textContent = `${detail.detailSummary} Kaynak: ${detail.note ?? detail.providerDisplayName}. Son guncelleme ${formatTime(detail.lastUpdatedAt)}.`;
+            const warnings = (detail.qualityWarnings ?? []).length ? ` Uyarı: ${(detail.qualityWarnings ?? []).join(", ")}.` : "";
+            const basis = detail.calculationBasis ? ` Formül: ${detail.calculationBasis}.` : "";
+            elements.modalSummary.textContent = `${detail.detailSummary} Kaynak: ${detail.note ?? detail.providerDisplayName}. Tip: ${sourceTypeLabel(detail.sourceType)}.${basis}${warnings} Son güncelleme ${formatTime(detail.lastUpdatedAt)}.`;
             elements.modalPrice.textContent = formatValue(detail.price, detail.displayCurrency);
             elements.modalChange.textContent = `${detail.change24hPercent.toFixed(2)}%`;
             elements.modalRange.textContent = `${formatValue(detail.low24h, detail.displayCurrency)} / ${formatValue(detail.high24h, detail.displayCurrency)}`;
@@ -894,7 +961,7 @@
 
                 if (response.ok) {
                     const result = await response.json();
-                    elements.pulseLabel.textContent = `${result.providerDisplayName} • ${result.quoteCount} enstruman`;
+                    elements.pulseLabel.textContent = `${result.providerDisplayName} • ${result.quoteCount} enstrüman`;
                     await refreshDashboard(elements.currency.value);
                 }
             });
@@ -908,13 +975,30 @@
 
             connection.on("market:pulse", async (payload) => {
                 elements.pulseLabel.textContent = `${payload.providerKey} • ${payload.usedFallback ? "Fallback" : "Live"}`;
+                elements.pulseLabel.textContent = `${statusLabel(payload.status ?? (payload.usedFallback ? "recentSnapshot" : "active/realtime"))} - ${payload.providerKey}`;
                 await refreshDashboard(elements.currency.value);
             });
 
-            connection.start().catch(() => {
+            connection.onreconnecting(() => {
+                elements.pulseLabel.textContent = "Gecikmeli";
+            });
+
+            connection.onreconnected(() => {
+                elements.pulseLabel.textContent = "Canlı";
+            });
+
+            connection.onclose(() => {
+                elements.pulseLabel.textContent = "Son Snapshot";
+            });
+
+            connection.start().then(() => {
+                elements.pulseLabel.textContent = "Canlı";
+            }).catch(() => {
+                elements.pulseLabel.textContent = "Son Snapshot";
                 window.setInterval(() => refreshDashboard(elements.currency.value), 60000);
             });
         } else {
+            elements.pulseLabel.textContent = "Son Snapshot";
             window.setInterval(() => refreshDashboard(elements.currency.value), 60000);
         }
 

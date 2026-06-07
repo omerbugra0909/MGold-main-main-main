@@ -10,6 +10,9 @@ public class MarketDataSettings
     public string YahooChartBaseUrl { get; set; } = "https://query1.finance.yahoo.com/v8/finance/chart";
     public string YahooInterval { get; set; } = "5m";
     public string YahooRange { get; set; } = "1d";
+    public string LocalGoldRatesUrl { get; set; } = "https://finance.truncgil.com/api/gold-rates";
+    public bool PreferLocalGoldRates { get; set; } = true;
+    public decimal GoldPriceSyncThresholdTry { get; set; } = 1m;
     public string UserAgent { get; set; } = "Mozilla/5.0 (compatible; MGoldMarketBot/1.0)";
     public int DefaultRefreshIntervalSeconds { get; set; } = 45;
     public int CacheSeconds { get; set; } = 15;
@@ -59,6 +62,11 @@ public class MarketQuoteDto
     public string ProviderKey { get; set; } = string.Empty;
     public string ProviderDisplayName { get; set; } = string.Empty;
     public string? Note { get; set; }
+    public string SourceType { get; set; } = "live_market";
+    public string? CalculationBasis { get; set; }
+    public string DataStatus { get; set; } = "recentSnapshot";
+    public string DataQualityStatus { get; set; } = "ok";
+    public IReadOnlyList<string> QualityWarnings { get; set; } = [];
     public DateTime LastUpdatedAt { get; set; }
     public IReadOnlyList<decimal> Sparkline { get; set; } = [];
 }
@@ -129,6 +137,10 @@ public class MarketProviderQuoteDto
     public decimal? Low24hInUsd { get; set; }
     public int SortOrder { get; set; }
     public string? Note { get; set; }
+    public string SourceType { get; set; } = "live_market";
+    public string? CalculationBasis { get; set; }
+    public string DataQualityStatus { get; set; } = "ok";
+    public IReadOnlyList<string> QualityWarnings { get; set; } = [];
 }
 
 public class MarketPulseDto
@@ -136,6 +148,7 @@ public class MarketPulseDto
     public DateTime LastUpdatedAt { get; set; }
     public string ProviderKey { get; set; } = string.Empty;
     public bool UsedFallback { get; set; }
+    public string Status { get; set; } = "recentSnapshot";
 }
 
 public class MarketBoardPageViewModel

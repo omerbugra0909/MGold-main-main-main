@@ -2,13 +2,13 @@
     var isSystemAdmin = User.IsInRole("SystemAdmin");
     var isManager = User.IsInRole("Manager");
     var isEmployee = User.IsInRole("Employee");
-    var panelName = isSystemAdmin ? "MGold Platform" : isManager ? "MGold Firma Paneli" : isEmployee ? "MGold Calisma Alani" : "MGold Panel";
+    var panelName = isSystemAdmin ? "MGold Platform" : isManager ? "MGold Firma Paneli" : isEmployee ? "MGold Çalışma Alanı" : "MGold Panel";
     var panelDescription = isSystemAdmin
-        ? "Tum firmalari, kullanicilari ve platform verisini yoneten global admin alani."
+        ? "Tüm firmaları, kullanıcıları ve platform ayarlarını yöneten sistem alanı."
         : isManager
-            ? "Sadece bagli firmaya ait urun, siparis, ekip ve operasyon verisini yoneten firma alani."
-            : "Bagli firmadaki gorev ve operasyon akislarini takip eden calisma alani.";
-    var panelBadge = isSystemAdmin ? "Global Admin" : isManager ? "Firma Paneli" : isEmployee ? "Calisma Alani" : "Yonetim Paneli";
+            ? "Yalnızca bağlı firmaya ait ürün, sipariş, ekip ve operasyon verilerini yöneten firma alanı."
+            : "Bağlı firmadaki görev ve operasyon akışlarını takip eden çalışma alanı.";
+    var panelBadge = isSystemAdmin ? "Sistem Yönetimi" : isManager ? "Firma Paneli" : isEmployee ? "Çalışma Alanı" : "Yönetim Paneli";
     var title = ViewData["Title"]?.ToString() ?? panelBadge;
     var description = ViewData["PageDescription"]?.ToString() ?? panelDescription;
 }
@@ -359,7 +359,7 @@
                 ViewData["BrandMarkTitle"] = "MGold";
             }
             @await Html.PartialAsync("_MGoldBrandMark")
-            <div class="loader-copy">Loading command center</div>
+            <div class="loader-copy">Yönetim paneli hazırlanıyor</div>
         </div>
     </div>
 
@@ -393,34 +393,34 @@
                     <a class="@navClass("Admin","Index")" href="/admin">Admin Dashboard</a>
                     <a class="@navClass("Platform","Index")" href="/admin/platform">Platform Merkezi</a>
                     <a class="@navClass("Workforce","ManagerDashboard")" href="/admin/operations">Operasyon Merkezi</a>
-                    <a class="@navClass("Admin","Products")" href="/admin/products">Urun Yonetimi</a>
-                    <a class="@navClass("Admin","Orders")" href="/admin/orders">Siparis Yonetimi</a>
+                    <a class="@navClass("Admin","Products")" href="/admin/products">Ürün Yönetimi</a>
+                    <a class="@navClass("Admin","Orders")" href="/admin/orders">Sipariş Yönetimi</a>
                     <a class="@navClass("Admin","Reports")" href="/admin/reports">Raporlama</a>
                     <a class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Market" ? "active" : "")" href="/admin/market">Canli Market</a>
-                    <a class="@navClass("Admin","Users")" href="/admin/users">Kullanici Yonetimi</a>
+                    <a class="@navClass("Admin","Users")" href="/admin/users">Kullanıcı Yönetimi</a>
                     <a class="@navClass("Admin","Reviews")" href="/admin/reviews">Yorumlar</a>
                     <a class="@navClass("Admin","Notifications")" href="/admin/notifications">Bildirimler</a>
                 }
                 @if (User.IsInRole("Manager") || User.IsInRole("Employee"))
                 {
-                    <a class="@navClass("Workforce","MyTasks")" href="@(User.IsInRole("Employee") ? "/employee" : "/owner/operations")">Gorevler</a>
+                    <a class="@navClass("Workforce","MyTasks")" href="@(User.IsInRole("Employee") ? "/employee" : "/owner/operations")">Görevler</a>
                 }
                 @if (User.IsInRole("Manager"))
                 {
                     <a class="@navClass("Admin","Index")" href="/owner">Firma Dashboard</a>
                     <a class="@navClass("Workforce","ManagerDashboard")" href="/owner/operations">Operasyon Merkezi</a>
-                    <a class="@navClass("Admin","Products")" href="/owner/products">Urun Yonetimi</a>
-                    <a class="@navClass("Admin","Orders")" href="/owner/orders">Siparis Yonetimi</a>
+                    <a class="@navClass("Admin","Products")" href="/owner/products">Ürün Yönetimi</a>
+                    <a class="@navClass("Admin","Orders")" href="/owner/orders">Sipariş Yönetimi</a>
                     <a class="@navClass("Admin","Reports")" href="/owner/reports">Raporlama</a>
                     <a class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Market" ? "active" : "")" href="/owner/market">Canli Market</a>
-                    <a class="@navClass("Admin","Users")" href="/owner/users">Kullanici Yonetimi</a>
+                    <a class="@navClass("Admin","Users")" href="/owner/users">Çalışan Yönetimi</a>
                     <a class="@navClass("Admin","Reviews")" href="/owner/reviews">Yorumlar</a>
                     <a class="@navClass("Admin","Notifications")" href="/owner/notifications">Bildirimler</a>
                 }
-                <a asp-controller="Public" asp-action="Index">Musteri Yuzune Don</a>
+                <a asp-controller="Public" asp-action="Index">Siteye Dön</a>
                 <form method="post" action="/account/logout">
                     @Html.AntiForgeryToken()
-                    <button type="submit">Cikis Yap</button>
+                    <button type="submit">Çıkış Yap</button>
                 </form>
             </nav>
         </aside>

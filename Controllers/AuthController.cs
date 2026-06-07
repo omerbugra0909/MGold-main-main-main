@@ -156,9 +156,10 @@ public class AuthController(
         }
 
         if (!currentUserService.IsInRole(RoleConstants.SystemAdmin)
-            && string.Equals(dto.Role, RoleConstants.SystemAdmin, StringComparison.Ordinal))
+            && (!string.Equals(user.Role, RoleConstants.Employee, StringComparison.Ordinal)
+                || !string.Equals(dto.Role, RoleConstants.Employee, StringComparison.Ordinal)))
         {
-            return ApiResponseFactory.CreateFailure(this, "Forbidden.", StatusCodes.Status403Forbidden, "Sistem admin rolu yalnizca sistem admini tarafindan atanabilir.");
+            return ApiResponseFactory.CreateFailure(this, "Forbidden.", StatusCodes.Status403Forbidden, "Firma yoneticisi yalnizca kendi firmasindaki calisan hesaplarini yonetebilir.");
         }
 
         if (string.Equals(User.Identity?.Name, user.Username, StringComparison.OrdinalIgnoreCase) && !dto.IsActive)

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MGold.PolicyTests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+db934d13f0667e28092b9838336b505327214e0d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4f6e32bcaafcd6b5686f79576ef3ff31fb8993a0")]
 [assembly: System.Reflection.AssemblyProductAttribute("MGold.PolicyTests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MGold.PolicyTests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

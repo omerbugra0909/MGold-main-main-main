@@ -1,6 +1,6 @@
 @{
-    var title = ViewData["Title"]?.ToString() ?? "Musteri Paneli";
-    var description = ViewData["PageDescription"]?.ToString() ?? "Siparislerinizi ve hesap bilgilerinizi yonetin.";
+    var title = ViewData["Title"]?.ToString() ?? "Müşteri Paneli";
+    var description = ViewData["PageDescription"]?.ToString() ?? "Siparişlerinizi ve hesap bilgilerinizi yönetin.";
 }
 <!doctype html>
 <html lang="tr">
@@ -347,7 +347,7 @@
                 ViewData["BrandMarkTitle"] = "MGold";
             }
             @await Html.PartialAsync("_MGoldBrandMark")
-            <div class="loader-copy">Loading customer suite</div>
+            <div class="loader-copy">Müşteri paneli hazırlanıyor</div>
         </div>
     </div>
 
@@ -371,35 +371,35 @@
                 }
                 @await Html.PartialAsync("_MGoldBrandMark")
                 <span class="brand-copy">
-                    <strong>MGold Customer</strong>
-                    <span>Motion-led personal dashboard for orders, favorites and profile rituals.</span>
+                    <strong>MGold Müşteri</strong>
+                    <span>Siparişler, favoriler ve hesap işlemleri için kişisel panel.</span>
                 </span>
             </div>
             <nav class="nav">
                 <a class="@navClass("Customer","Index")" asp-controller="Customer" asp-action="Index">Panelim</a>
-                <a class="@navClass("Customer","Products")" asp-controller="Customer" asp-action="Products">Urunler</a>
-                <a class="@navClass("Customer","Orders")" asp-controller="Customer" asp-action="Orders">Siparislerim</a>
-                <a class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Market" ? "active" : "")" asp-controller="Market" asp-action="Customer">Canli Piyasalar</a>
+                <a class="@navClass("Customer","Products")" asp-controller="Customer" asp-action="Products">Ürünler</a>
+                <a class="@navClass("Customer","Orders")" asp-controller="Customer" asp-action="Orders">Siparişlerim</a>
+                <a class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Market" ? "active" : "")" asp-controller="Market" asp-action="Customer">Canlı Piyasalar</a>
                 <a class="@navClass("Customer","Favorites")" asp-controller="Customer" asp-action="Favorites">Favoriler</a>
-                <a class="@navClass("Customer","Profile")" asp-controller="Customer" asp-action="Profile">Hesabim</a>
-                <a class="@navClass("Customer","Contact")" asp-controller="Customer" asp-action="Contact">Iletisim</a>
-                <a asp-controller="Public" asp-action="Products">Magaza</a>
+                <a class="@navClass("Customer","Profile")" asp-controller="Customer" asp-action="Profile">Hesabım</a>
+                <a class="@navClass("Customer","Contact")" asp-controller="Customer" asp-action="Contact">İletişim</a>
+                <a asp-controller="Public" asp-action="Products">Mağaza</a>
                 <form method="post" action="/account/logout">
                     @Html.AntiForgeryToken()
-                    <button type="submit">Cikis Yap</button>
+                    <button type="submit">Çıkış Yap</button>
                 </form>
             </nav>
         </aside>
         <main class="content">
             <header class="topbar">
                 <div class="topbar-copy">
-                    <span class="badge">Premium Customer Motion</span>
+                    <span class="badge">Müşteri Paneli</span>
                     <h1>@title</h1>
                     <p>@description</p>
                 </div>
                 <div class="topbar-actions">
                     @await Html.PartialAsync("_ThemeSwitcher")
-                    <div class="pill">Kullanici paneli daha akici hover'lar, katmanli kartlar ve net bir premium hareket dili ile calisir.</div>
+                    <div class="pill">Hesap işlemleriniz kontrollü ve güvenli bir panelde tutulur.</div>
                 </div>
             </header>
             @RenderBody()

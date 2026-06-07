@@ -369,6 +369,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(x => x.ProviderKey).HasMaxLength(80);
             entity.Property(x => x.ProviderDisplayName).HasMaxLength(120);
             entity.Property(x => x.Note).HasMaxLength(400);
+            entity.Property(x => x.SourceType).HasMaxLength(40);
+            entity.Property(x => x.CalculationBasis).HasMaxLength(500);
+            entity.Property(x => x.DataQualityStatus).HasMaxLength(40);
+            entity.Property(x => x.QualityWarningsJson).HasMaxLength(2000);
             entity.Property(x => x.PriceInUsd).HasPrecision(18, 6);
             entity.Property(x => x.Price24hAgoInUsd).HasPrecision(18, 6);
             entity.Property(x => x.High24hInUsd).HasPrecision(18, 6);

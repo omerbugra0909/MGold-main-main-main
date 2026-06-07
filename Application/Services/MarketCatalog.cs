@@ -15,7 +15,34 @@ internal static class MarketCatalog
     public const decimal FullGoldWeightGram = 7.016m;
     public const decimal RepublicGoldWeightGram = 7.216m;
 
-    public static IReadOnlyList<string> SupportedCurrencies { get; } = ["TRY", "USD", "EUR", "GBP", "SAR", "AED", "CHF", "CAD", "JPY"];
+    public static IReadOnlyList<string> SupportedCurrencies { get; } =
+    [
+        "TRY",
+        "USD",
+        "EUR",
+        "GBP",
+        "SAR",
+        "AED",
+        "CHF",
+        "CAD",
+        "JPY",
+        "AUD",
+        "NZD",
+        "DKK",
+        "SEK",
+        "NOK",
+        "ZAR",
+        "CNY",
+        "HKD",
+        "SGD",
+        "INR",
+        "MXN",
+        "QAR",
+        "KWD",
+        "RUB",
+        "PKR",
+        "KRW"
+    ];
 
     public static bool IsVisibleOnBoard(string symbol)
         => !HiddenSymbols.Contains(symbol);

@@ -40,6 +40,18 @@ public class MarketQuoteSnapshot
     [MaxLength(400)]
     public string? Note { get; set; }
 
+    [MaxLength(40)]
+    public string SourceType { get; set; } = "live_market";
+
+    [MaxLength(500)]
+    public string? CalculationBasis { get; set; }
+
+    [MaxLength(40)]
+    public string DataQualityStatus { get; set; } = "ok";
+
+    [MaxLength(2000)]
+    public string QualityWarningsJson { get; set; } = "[]";
+
     public bool IsFallback { get; set; }
     public int SortOrder { get; set; }
     public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;

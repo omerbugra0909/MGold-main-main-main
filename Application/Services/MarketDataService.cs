@@ -15,6 +15,7 @@ public class MarketDataService(
     IMemoryCache cache,
     IEnumerable<IMarketDataProvider> providers,
     IOptions<MarketDataSettings> settings,
+    IMarketDataValidator validator,
     ILogger<MarketDataService> logger) : IMarketDataService
 {
     private const string DashboardCachePrefix = "market-dashboard:";
@@ -125,6 +126,11 @@ public class MarketDataService(
             ProviderKey = quote.ProviderKey,
             ProviderDisplayName = quote.ProviderDisplayName,
             Note = quote.Note,
+            SourceType = quote.SourceType,
+            CalculationBasis = quote.CalculationBasis,
+            DataStatus = quote.DataStatus,
+            DataQualityStatus = quote.DataQualityStatus,
+            QualityWarnings = quote.QualityWarnings,
             LastUpdatedAt = quote.LastUpdatedAt,
             Sparkline = quote.Sparkline,
             DetailSummary = $"{quote.DisplayName} son 24 saatte {Math.Abs(quote.Change24hPercent):N2}% {(quote.IsRising ? "yukseldi" : "geriledi")}.",
@@ -291,8 +297,15 @@ public class MarketDataService(
     {
         var existing = await context.MarketQuoteSnapshots.ToListAsync(cancellationToken);
         var existingBySymbol = existing.ToDictionary(x => x.Symbol, StringComparer.OrdinalIgnoreCase);
+        var normalizedQuotes = payload.Quotes
+            .Select(quote => validator.NormalizeProviderQuote(payload, quote))
+            .Where(quote => quote.PriceInUsd > 0)
+            .ToList();
 
-        foreach (var quote in payload.Quotes)
+        payload.Quotes = normalizedQuotes;
+        validator.WarnIfGoldOunceMismatch(payload);
+
+        foreach (var quote in normalizedQuotes)
         {
             if (!existingBySymbol.TryGetValue(quote.Symbol, out var entity))
             {
@@ -326,12 +339,60 @@ public class MarketDataService(
             entity.ProviderKey = payload.ProviderKey;
             entity.ProviderDisplayName = payload.ProviderDisplayName;
             entity.Note = quote.Note ?? payload.Note;
+            entity.SourceType = quote.SourceType;
+            entity.CalculationBasis = quote.CalculationBasis;
+            entity.DataQualityStatus = quote.DataQualityStatus;
+            entity.QualityWarningsJson = JsonSerializer.Serialize(quote.QualityWarnings, JsonOptions);
             entity.IsFallback = payload.IsFallback;
             entity.SortOrder = quote.SortOrder;
             entity.LastUpdatedAt = payload.FetchedAt;
         }
 
+        await SyncGoldPriceFromPayloadAsync(payload, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task SyncGoldPriceFromPayloadAsync(MarketProviderPayloadDto payload, CancellationToken cancellationToken)
+    {
+        var tryQuote = payload.Quotes.FirstOrDefault(x => string.Equals(x.Symbol, "TRY", StringComparison.OrdinalIgnoreCase));
+        var gramQuote = payload.Quotes.FirstOrDefault(x => string.Equals(x.Symbol, "GRAM_ALTIN", StringComparison.OrdinalIgnoreCase));
+        if (tryQuote is null || gramQuote is null || tryQuote.PriceInUsd <= 0 || gramQuote.PriceInUsd <= 0)
+        {
+            return;
+        }
+
+        var gramTry = Math.Round(gramQuote.PriceInUsd / tryQuote.PriceInUsd, 2, MidpointRounding.AwayFromZero);
+        if (gramTry <= 0)
+        {
+            return;
+        }
+
+        var latest = await context.GoldPrices
+            .Where(x => x.IsActive)
+            .OrderByDescending(x => x.EffectiveFrom)
+            .ThenByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var threshold = Math.Max(0.01m, settings.Value.GoldPriceSyncThresholdTry);
+        if (latest is not null && Math.Abs(latest.PricePerGram - gramTry) < threshold)
+        {
+            return;
+        }
+
+        var activePrices = await context.GoldPrices.Where(x => x.IsActive).ToListAsync(cancellationToken);
+        foreach (var activePrice in activePrices)
+        {
+            activePrice.IsActive = false;
+        }
+
+        context.GoldPrices.Add(new GoldPrice
+        {
+            PricePerGram = gramTry,
+            EffectiveFrom = payload.FetchedAt,
+            Source = TrimSource($"{payload.ProviderDisplayName} - {gramQuote.Note}"),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        });
     }
 
     private MarketQuoteDto MapQuote(
@@ -349,7 +410,7 @@ public class MarketDataService(
         var changePercent = open24 == 0 ? 0 : (changeAbs / open24) * 100m;
         var sparkline = ParseSparkline(snapshot.SparklineJson).Select(x => ConvertFromUsd(x, currentDisplayCurrencyUsd)).ToList();
 
-        return new MarketQuoteDto
+        var quote = new MarketQuoteDto
         {
             Symbol = snapshot.Symbol,
             DisplayName = snapshot.DisplayName,
@@ -372,9 +433,16 @@ public class MarketDataService(
             ProviderKey = snapshot.ProviderKey,
             ProviderDisplayName = snapshot.ProviderDisplayName,
             Note = snapshot.Note,
+            SourceType = string.IsNullOrWhiteSpace(snapshot.SourceType) ? (snapshot.IsFallback ? "manual_fallback" : "live_market") : snapshot.SourceType,
+            CalculationBasis = snapshot.CalculationBasis,
+            DataStatus = ResolveDataStatus(snapshot),
+            DataQualityStatus = string.IsNullOrWhiteSpace(snapshot.DataQualityStatus) ? "ok" : snapshot.DataQualityStatus,
+            QualityWarnings = ParseWarnings(snapshot.QualityWarningsJson),
             LastUpdatedAt = snapshot.LastUpdatedAt,
             Sparkline = sparkline
         };
+
+        return validator.NormalizeMappedQuote(quote);
     }
 
     private static List<decimal> ParseSparkline(string? json)
@@ -391,6 +459,23 @@ public class MarketDataService(
         catch
         {
             return [];
+        }
+    }
+
+    private static List<string> ParseWarnings(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json, JsonOptions) ?? [];
+        }
+        catch
+        {
+            return ["Kaynak dogrulanamadi"];
         }
     }
 
@@ -433,6 +518,27 @@ public class MarketDataService(
         return value <= 0 ? 1m : value;
     }
 
+    private string ResolveDataStatus(MarketQuoteSnapshot snapshot)
+    {
+        if (string.Equals(snapshot.DataQualityStatus, "error", StringComparison.OrdinalIgnoreCase) || snapshot.PriceInUsd <= 0)
+        {
+            return "error";
+        }
+
+        var age = DateTime.UtcNow - snapshot.LastUpdatedAt;
+        if (age <= TimeSpan.FromSeconds(Math.Max(60, settings.Value.DefaultRefreshIntervalSeconds * 2)) && !snapshot.IsFallback)
+        {
+            return "active/realtime";
+        }
+
+        if (age <= TimeSpan.FromMinutes(15))
+        {
+            return "recentSnapshot";
+        }
+
+        return "stale";
+    }
+
     private void InvalidateDashboardCache()
     {
         foreach (var currency in MarketCatalog.SupportedCurrencies)
@@ -440,4 +546,7 @@ public class MarketDataService(
             cache.Remove($"{DashboardCachePrefix}{currency}:anon");
         }
     }
+
+    private static string TrimSource(string source)
+        => source.Length <= 100 ? source : source[..100];
 }

@@ -336,6 +336,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IContactService, ContactService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IMarketDataService, MarketDataService>();
+builder.Services.AddScoped<IMarketDataValidator, MarketDataValidator>();
 builder.Services.AddScoped<IWorkforceService, WorkforceService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAccountVerificationService, AccountVerificationService>();
@@ -753,7 +754,7 @@ static void SeedProductionEssentials(WebApplication app)
             phone: string.IsNullOrWhiteSpace(companyProfile.Phone) ? "+905550000000" : companyProfile.Phone,
             address: string.IsNullOrWhiteSpace(companyProfile.Address) ? "Istanbul" : companyProfile.Address);
 
-        EnsureBootstrapSystemAdmin(db, passwordHasher, app.Configuration);
+        EnsureProductionBootstrapAccounts(db, passwordHasher, app.Configuration);
         SeedMarketProviders(db);
 
         app.Logger.LogInformation("Production essentials checked. Bootstrap company id: {CompanyId}", companyId);
@@ -888,6 +889,10 @@ static void ApplySqliteDevelopmentUpgrades(string? connectionString)
     EnsureCustomerFavoritesTable(connection);
     EnsureMarketProviderConfigurationsTable(connection);
     EnsureMarketQuoteSnapshotsTable(connection);
+    EnsureSqliteColumn(connection, "MarketQuoteSnapshots", "SourceType", "TEXT NOT NULL DEFAULT 'live_market'");
+    EnsureSqliteColumn(connection, "MarketQuoteSnapshots", "CalculationBasis", "TEXT NULL");
+    EnsureSqliteColumn(connection, "MarketQuoteSnapshots", "DataQualityStatus", "TEXT NOT NULL DEFAULT 'ok'");
+    EnsureSqliteColumn(connection, "MarketQuoteSnapshots", "QualityWarningsJson", "TEXT NOT NULL DEFAULT '[]'");
     EnsureMarketWatchlistItemsTable(connection);
     EnsureWorkTasksTable(connection);
     EnsureWorkTaskHistoryEntriesTable(connection);
@@ -1114,6 +1119,10 @@ static void EnsureMarketQuoteSnapshotsTable(SqliteConnection connection)
             ProviderKey TEXT NOT NULL,
             ProviderDisplayName TEXT NOT NULL,
             Note TEXT NULL,
+            SourceType TEXT NOT NULL DEFAULT 'live_market',
+            CalculationBasis TEXT NULL,
+            DataQualityStatus TEXT NOT NULL DEFAULT 'ok',
+            QualityWarningsJson TEXT NOT NULL DEFAULT '[]',
             IsFallback INTEGER NOT NULL,
             SortOrder INTEGER NOT NULL,
             LastUpdatedAt TEXT NOT NULL,
@@ -1243,63 +1252,7 @@ static void EnsureRefreshTokensTable(SqliteConnection connection)
 
 static void SeedUsersAndAccounts(AppDbContext db, IPasswordHasher<AppUser> passwordHasher)
 {
-    var demoCompanyId = EnsureCompany(
-        db,
-        name: "MGold Demo Store",
-        code: "MGOLD-DEMO",
-        email: "demo@mgold.local",
-        phone: "+902125555555",
-        address: "Kapalicarsi, Fatih / Istanbul");
-
-    EnsureUser(
-        db,
-        passwordHasher,
-        username: "admin",
-        fullName: "Platform Yoneticisi",
-        email: "sakizciomerbugra@gmail.com",
-        phone: "0551 084 04 83",
-        role: RoleConstants.SystemAdmin,
-        password: "0909",
-        companyId: null,
-        createdByUserId: null);
-
-    EnsureUser(
-        db,
-        passwordHasher,
-        username: "yonetici",
-        fullName: "Demo Firma Yoneticisi",
-        email: "manager@mgold.local",
-        phone: "+905555555501",
-        role: RoleConstants.Manager,
-        password: "Demo123*",
-        companyId: demoCompanyId,
-        createdByUserId: null);
-
-    var managerUser = db.AppUsers.FirstOrDefault(x => x.Username == "yonetici");
-
-    EnsureUser(
-        db,
-        passwordHasher,
-        username: "personel",
-        fullName: "Demo Personel",
-        email: "employee@mgold.local",
-        phone: "+905555555502",
-        role: RoleConstants.Employee,
-        password: "Demo123*",
-        companyId: demoCompanyId,
-        createdByUserId: managerUser?.Id);
-
-    EnsureUser(
-        db,
-        passwordHasher,
-        username: "musteri",
-        fullName: "Demo Musteri",
-        email: "customer@mgold.local",
-        phone: "+905555555503",
-        role: RoleConstants.Customer,
-        password: "Demo123*",
-        companyId: null,
-        createdByUserId: managerUser?.Id);
+    // Demo hesap seeding kapatildi. Uretim bootstrap hesaplari SeedProductionEssentials icinde yonetilir.
 }
 
 static int EnsureCompany(AppDbContext db, string name, string code, string email, string phone, string address)
@@ -1375,41 +1328,82 @@ static void SeedMarketProviders(AppDbContext db)
     db.SaveChanges();
 }
 
-static void EnsureBootstrapSystemAdmin(
+static void EnsureProductionBootstrapAccounts(
     AppDbContext db,
     IPasswordHasher<AppUser> passwordHasher,
     IConfiguration configuration)
 {
-    if (db.AppUsers.Any(x => x.Role == RoleConstants.SystemAdmin))
-    {
-        return;
-    }
+    var adminSection = configuration.GetSection("BootstrapAdmin");
+    var managerSection = configuration.GetSection("BootstrapManager");
+    var company = db.Companies.First(x => x.Code == "MGOLD");
 
-    var section = configuration.GetSection("BootstrapAdmin");
-    var username = (section["Username"] ?? "admin").Trim().ToLowerInvariant();
-    var fullName = section["FullName"] ?? "Platform Yoneticisi";
-    var email = (section["Email"] ?? "admin@mgold.local").Trim().ToLowerInvariant();
-    var phone = NormalizePhone(section["Phone"] ?? "+905550000000");
-    var password = section["Password"] ?? "0909";
+    var systemAdmin = EnsureBootstrapInternalUser(
+        db,
+        passwordHasher,
+        section: adminSection,
+        fallbackUsername: "platform.admin",
+        fallbackFullName: "Sistem Yoneticisi",
+        fallbackEmail: "sakizciomerbugra@gmail.com",
+        fallbackPhone: "+905510840483",
+        role: RoleConstants.SystemAdmin,
+        companyId: null,
+        createdByUserId: null);
+    db.SaveChanges();
 
-    var user = db.AppUsers.FirstOrDefault(x => x.Username == username || x.Email == email);
+    EnsureBootstrapInternalUser(
+        db,
+        passwordHasher,
+        section: managerSection,
+        fallbackUsername: "firma.yoneticisi",
+        fallbackFullName: "Firma Yoneticisi",
+        fallbackEmail: "sakizciomerbugra895gmail.com",
+        fallbackPhone: "+905510840484",
+        role: RoleConstants.Manager,
+        companyId: company.Id,
+        createdByUserId: systemAdmin.Id == 0 ? null : systemAdmin.Id);
+
+    DisableLegacyDemoAccounts(db);
+    db.SaveChanges();
+}
+
+static AppUser EnsureBootstrapInternalUser(
+    AppDbContext db,
+    IPasswordHasher<AppUser> passwordHasher,
+    IConfigurationSection section,
+    string fallbackUsername,
+    string fallbackFullName,
+    string fallbackEmail,
+    string fallbackPhone,
+    string role,
+    int? companyId,
+    int? createdByUserId)
+{
+    var username = (section["Username"] ?? fallbackUsername).Trim().ToLowerInvariant();
+    var fullName = section["FullName"] ?? fallbackFullName;
+    var email = (section["Email"] ?? fallbackEmail).Trim().ToLowerInvariant();
+    var phone = NormalizePhone(section["Phone"] ?? fallbackPhone);
+    var passwordHash = section["PasswordHash"];
+    var plainPasswordFromEnvironment = section["Password"];
+
+    var user = db.AppUsers.FirstOrDefault(x => x.Email == email || x.Username == username);
     if (user is null)
     {
-        user = new AppUser
+        user = db.AppUsers.FirstOrDefault(x => x.Role == role && x.Email == email)
+            ?? new AppUser { CreatedAt = DateTime.UtcNow };
+        if (user.Id == 0)
         {
-            Username = username,
-            CreatedAt = DateTime.UtcNow
-        };
-        db.AppUsers.Add(user);
+            db.AppUsers.Add(user);
+        }
     }
 
+    user.Username = username;
     user.FullName = fullName;
     user.Email = email;
     user.Phone = phone;
-    user.Role = RoleConstants.SystemAdmin;
-    user.CompanyId = null;
+    user.Role = role;
+    user.CompanyId = companyId;
     user.CustomerId = null;
-    user.CreatedByUserId = null;
+    user.CreatedByUserId = createdByUserId;
     user.IsActive = true;
     user.EmailConfirmed = true;
     user.EmailConfirmedAt ??= DateTime.UtcNow;
@@ -1419,117 +1413,44 @@ static void EnsureBootstrapSystemAdmin(
         ? Guid.NewGuid().ToString("N")
         : user.SecurityStamp;
     user.PasswordChangedAt ??= DateTime.UtcNow;
-    user.PasswordHash = passwordHasher.HashPassword(user, password);
 
-    db.SaveChanges();
+    if (!string.IsNullOrWhiteSpace(passwordHash))
+    {
+        user.PasswordHash = passwordHash.Trim();
+    }
+    else if (!string.IsNullOrWhiteSpace(plainPasswordFromEnvironment))
+    {
+        user.PasswordHash = passwordHasher.HashPassword(user, plainPasswordFromEnvironment);
+    }
+    else if (string.IsNullOrWhiteSpace(user.PasswordHash))
+    {
+        throw new InvalidOperationException($"{role} bootstrap password hash is not configured.");
+    }
+
+    return user;
 }
 
-static void EnsureUser(
-    AppDbContext db,
-    IPasswordHasher<AppUser> passwordHasher,
-    string username,
-    string fullName,
-    string email,
-    string phone,
-    string role,
-    string password,
-    int? companyId,
-    int? createdByUserId)
+static void DisableLegacyDemoAccounts(AppDbContext db)
 {
-    var normalizedUsername = username.Trim().ToLowerInvariant();
-    var normalizedEmail = email.Trim().ToLowerInvariant();
-    var normalizedPhone = NormalizePhone(phone);
-
-    var existingUser = db.AppUsers.FirstOrDefault(x => x.Username == normalizedUsername || x.Email == normalizedEmail);
-    if (existingUser is not null)
+    var protectedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        var existingCustomer = existingUser.CustomerId.HasValue
-            ? db.Customers.FirstOrDefault(x => x.Id == existingUser.CustomerId.Value)
-            : null;
-
-        existingUser.FullName = fullName;
-        existingUser.Email = normalizedEmail;
-        existingUser.Phone = normalizedPhone;
-        existingUser.Role = role;
-        existingUser.CompanyId = companyId;
-        existingUser.CreatedByUserId = createdByUserId;
-        existingUser.IsActive = true;
-        existingUser.EmailConfirmed = true;
-        existingUser.EmailConfirmedAt ??= DateTime.UtcNow;
-        existingUser.PhoneConfirmed = true;
-        existingUser.PhoneConfirmedAt ??= DateTime.UtcNow;
-        if (string.IsNullOrWhiteSpace(existingUser.SecurityStamp))
-        {
-            existingUser.SecurityStamp = Guid.NewGuid().ToString("N");
-        }
-
-        if (existingCustomer is not null)
-        {
-            existingCustomer.Name = fullName;
-            existingCustomer.Email = normalizedEmail;
-            existingCustomer.Phone = normalizedPhone;
-            existingCustomer.CompanyId = companyId;
-        }
-        else
-        {
-            var customer = new Customer
-            {
-                Name = fullName,
-                Email = normalizedEmail,
-                Phone = normalizedPhone,
-                CompanyId = companyId
-            };
-            db.Customers.Add(customer);
-            db.SaveChanges();
-            existingUser.CustomerId = customer.Id;
-        }
-
-        existingUser.PasswordHash = passwordHasher.HashPassword(existingUser, password);
-        db.SaveChanges();
-        return;
-    }
-
-    var linkedCustomer = db.Customers.FirstOrDefault(x => x.Email == normalizedEmail || x.Phone == normalizedPhone);
-    if (linkedCustomer is null)
-    {
-        linkedCustomer = new Customer
-        {
-            Name = fullName,
-            Email = normalizedEmail,
-            Phone = normalizedPhone,
-            CompanyId = companyId
-        };
-        db.Customers.Add(linkedCustomer);
-        db.SaveChanges();
-    }
-    else
-    {
-        linkedCustomer.CompanyId = companyId;
-        db.SaveChanges();
-    }
-
-    var user = new AppUser
-    {
-        Username = normalizedUsername,
-        FullName = fullName,
-        Email = normalizedEmail,
-        Phone = normalizedPhone,
-        Role = role,
-        CompanyId = companyId,
-        CustomerId = linkedCustomer.Id,
-        CreatedByUserId = createdByUserId,
-        IsActive = true,
-        EmailConfirmed = true,
-        EmailConfirmedAt = DateTime.UtcNow,
-        PhoneConfirmed = true,
-        PhoneConfirmedAt = DateTime.UtcNow,
-        SecurityStamp = Guid.NewGuid().ToString("N"),
-        CreatedAt = DateTime.UtcNow
+        "sakizciomerbugra@gmail.com",
+        "sakizciomerbugra895gmail.com"
     };
-    user.PasswordHash = passwordHasher.HashPassword(user, password);
+    var legacyUsernames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "admin",
+        "yonetici",
+        "personel",
+        "musteri"
+    };
 
-    db.AppUsers.Add(user);
-    db.SaveChanges();
+    foreach (var user in db.AppUsers.Where(x => legacyUsernames.Contains(x.Username) && !protectedEmails.Contains(x.Email)))
+    {
+        user.IsActive = false;
+        user.LockoutEndAt = DateTime.UtcNow.AddYears(100);
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+    }
 }
 
 static string NormalizePhone(string phone)

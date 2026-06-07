@@ -1,7 +1,7 @@
 @model MGold.Controllers.AdminLoginViewModel
 @{
-    ViewData["Title"] = "Yonetim Girisi";
-    ViewData["PageDescription"] = "Sistem admini ve firma yoneticileri icin netlestirilmis panel girisi.";
+    ViewData["Title"] = "Yönetim Girişi";
+    ViewData["PageDescription"] = "Sistem yöneticisi ve firma yöneticisi hesapları için güvenli panel girişi.";
     var returnUrl = ViewData["ReturnUrl"]?.ToString();
 }
 
@@ -66,33 +66,33 @@
 <section class="surface admin-auth">
     <div class="auth-side">
         <div>
-            <span class="badge">Back Office</span>
-            <h2>Yonetim Girisi</h2>
-            <p>Admin ve firma yoneticisi hesaplari buradan panele gecer. Personel icin calisma alani, musteriler icin musteri girisi ayridir.</p>
+            <span class="badge">Yönetim Paneli</span>
+            <h2>Yönetim Girişi</h2>
+            <p>Sistem yöneticisi platform genelini, firma yöneticisi ise yalnızca kendi firmasına ait operasyonları yönetir. Personel ve müşteri girişleri ayrı akışlarla korunur.</p>
         </div>
         <div class="login-shortcuts">
-            <div>Sistem admini: <strong>admin</strong> / <strong>0909</strong></div>
-            <div>Firma yoneticisi: <strong>yonetici</strong> / <strong>Demo123*</strong></div>
+            <div>Yetkisiz erişim denemeleri kayıt altına alınır.</div>
+            <div>Hesap bilgileriniz yalnızca güvenli kimlik doğrulama ekranlarında kullanılmalıdır.</div>
         </div>
     </div>
 
     <form method="post" class="auth-form">
         @Html.AntiForgeryToken()
         <input type="hidden" name="returnUrl" value="@returnUrl" />
-        <h3>Panel oturumu ac</h3>
+        <h3>Panel oturumu aç</h3>
         @Html.ValidationSummary(false)
         <label>
-            <span>Kullanici Adi</span>
+            <span>E-posta veya kullanıcı adı</span>
             <input asp-for="Username" />
         </label>
         <label>
-            <span>Sifre</span>
+            <span>Şifre</span>
             <input asp-for="Password" type="password" />
         </label>
-        <button type="submit" class="btn btn-primary">Panele Gir</button>
+        <button type="submit" class="btn btn-primary">Giriş Yap</button>
         <div class="admin-note">
-            Personel hesabiyla devam edecekseniz <a href="/workspace/login"><strong>Calisma Alani</strong></a> girisini kullanin.
-            Sifrenizi unuttuysaniz <a href="/auth/forgot-password"><strong>sifre yenileme</strong></a> akisini baslatin.
+            Personel hesabıyla devam edecekseniz <a href="/workspace/login"><strong>Çalışma Alanı</strong></a> girişini kullanın.
+            Şifrenizi unuttuysanız <a href="/auth/forgot-password"><strong>şifre yenileme</strong></a> akışını başlatın.
         </div>
     </form>
 </section>
