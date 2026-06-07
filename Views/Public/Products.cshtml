@@ -1,7 +1,7 @@
 @model MGold.Controllers.PublicProductsPageViewModel
 @{
-    ViewData["Title"] = "Urunler";
-    ViewData["PageDescription"] = "Urun listesini daha genis, net ve filtrelenebilir bir ekranda goruntule.";
+    ViewData["Title"] = Model.SelectedCompany is null ? "Firma Kataloğu" : $"{Model.SelectedCompany.Name} Kataloğu";
+    ViewData["PageDescription"] = "Seçilen firmaya ait ürünleri filtrelenebilir katalog ekranında görüntüleyin.";
     var hasServerFilters =
         !string.IsNullOrWhiteSpace(Model.Filter.Search) ||
         Model.Filter.Type.HasValue ||
@@ -173,10 +173,11 @@
 <div class="products-stack">
     <section class="surface products-hero">
         <div>
-            <h2>Urunler</h2>
-            <p>Bu sayfa sadece liste icin ayrildi. Boylece urunleri daha genis alanda, satirlar birbirine girmeden ve filtreleri daha rahat kullanarak gorebilirsin.</p>
+            <span class="badge">Firma Kataloğu</span>
+            <h2>@(Model.SelectedCompany?.Name ?? "Ürünler")</h2>
+            <p>@(Model.SelectedCompany?.Description ?? "Ürünleri görüntülemek için önce firma seçin. Bu ekran yalnızca seçilen firmaya ait katalog verilerini gösterir.")</p>
         </div>
-        <div class="badge">@Model.Dashboard.TotalProducts toplam urun</div>
+        <div class="badge">@Model.Dashboard.TotalProducts ürün</div>
     </section>
 
     @if (TempData["Success"] is string ok && !string.IsNullOrWhiteSpace(ok))
@@ -196,6 +197,7 @@
         <h2 class="section-title">Filtreler</h2>
         <p class="section-copy">Listeyi isim, tip, fiyat ve stok durumuna gore daralt.</p>
         <form method="get" asp-controller="Public" asp-action="Products" class="products-stack" style="margin-top:16px;">
+            <input type="hidden" asp-for="Filter.CompanyId" />
             <div class="filter-grid">
                 <label class="field">
                     <span>Isme Gore</span>
@@ -232,13 +234,16 @@
             </div>
             <div class="filter-actions">
                 <button class="btn btn-primary" type="submit">Filtrele</button>
-                <a class="btn btn-secondary" asp-controller="Public" asp-action="Products">Temizle</a>
-                <a class="btn btn-secondary" asp-controller="Public" asp-action="Index">Dashboard'a Don</a>
+                @if (Model.SelectedCompany is not null)
+                {
+                    <a class="btn btn-secondary" href="/companies/@Model.SelectedCompany.Id">Temizle</a>
+                }
+                <a class="btn btn-secondary" asp-controller="Public" asp-action="Companies">Firma Değiştir</a>
             </div>
             <div class="summary-row">
                 <strong id="visibleCount">@Model.Products.Count</strong>
                 <span class="text-muted">kayit gosteriliyor</span>
-                <span class="badge">@Model.Dashboard.TotalProducts toplam urun</span>
+                <span class="badge">@Model.Dashboard.TotalProducts toplam ürün</span>
                 @if (hasServerFilters)
                 {
                     <span class="badge">Sunucu filtreleri aktif</span>
@@ -267,7 +272,8 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Urun</th>
+                            <th>Ürün</th>
+                            <th>Firma</th>
                             <th>Tip</th>
                             <th>Agirlik</th>
                             <th>Saflik</th>
@@ -293,6 +299,7 @@
                                     <strong class="product-name">@item.Name</strong>
                                     <span class="text-muted">@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
                                 </td>
+                                <td>@(item.CompanyName ?? "-")</td>
                                 <td><span class="badge @tagClass">@item.Type</span></td>
                                 <td>@item.Weight.ToString("N3") gr</td>
                                 <td>@item.PurityRate.ToString("N4")</td>

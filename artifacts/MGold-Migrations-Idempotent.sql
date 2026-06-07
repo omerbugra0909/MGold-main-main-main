@@ -1,63 +1,4 @@
-﻿/*
-  MGold production-safe upgrade preflight.
-  This block adopts an existing MGold SQL Server schema when tables already exist
-  but __EFMigrationsHistory is missing or incomplete. It prevents "object already exists"
-  errors on live databases that were installed manually before EF migration history existed.
-*/
-
-IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
-BEGIN
-    CREATE TABLE [__EFMigrationsHistory] (
-        [MigrationId] nvarchar(150) NOT NULL,
-        [ProductVersion] nvarchar(32) NOT NULL,
-        CONSTRAINT [PK___EFMigrationsHistory] PRIMARY KEY ([MigrationId])
-    );
-END;
-GO
-
-IF NOT EXISTS (
-    SELECT 1 FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260605205013_InitialProductionSchema'
-)
-AND OBJECT_ID(N'[AppUsers]', N'U') IS NOT NULL
-AND OBJECT_ID(N'[Products]', N'U') IS NOT NULL
-AND OBJECT_ID(N'[Orders]', N'U') IS NOT NULL
-AND OBJECT_ID(N'[MarketQuoteSnapshots]', N'U') IS NOT NULL
-BEGIN
-    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
-    VALUES (N'20260605205013_InitialProductionSchema', N'8.0.15');
-END;
-GO
-
-IF OBJECT_ID(N'[MarketQuoteSnapshots]', N'U') IS NOT NULL
-BEGIN
-    IF COL_LENGTH(N'MarketQuoteSnapshots', N'CalculationBasis') IS NULL
-        ALTER TABLE [MarketQuoteSnapshots] ADD [CalculationBasis] nvarchar(500) NULL;
-
-    IF COL_LENGTH(N'MarketQuoteSnapshots', N'DataQualityStatus') IS NULL
-        ALTER TABLE [MarketQuoteSnapshots] ADD [DataQualityStatus] nvarchar(40) NOT NULL CONSTRAINT [DF_MarketQuoteSnapshots_DataQualityStatus] DEFAULT N'ok';
-
-    IF COL_LENGTH(N'MarketQuoteSnapshots', N'QualityWarningsJson') IS NULL
-        ALTER TABLE [MarketQuoteSnapshots] ADD [QualityWarningsJson] nvarchar(2000) NOT NULL CONSTRAINT [DF_MarketQuoteSnapshots_QualityWarningsJson] DEFAULT N'[]';
-
-    IF COL_LENGTH(N'MarketQuoteSnapshots', N'SourceType') IS NULL
-        ALTER TABLE [MarketQuoteSnapshots] ADD [SourceType] nvarchar(40) NOT NULL CONSTRAINT [DF_MarketQuoteSnapshots_SourceType] DEFAULT N'live_market';
-
-    IF NOT EXISTS (
-        SELECT 1 FROM [__EFMigrationsHistory]
-        WHERE [MigrationId] = N'20260607141759_MarketQuoteQualityMetadata'
-    )
-    AND COL_LENGTH(N'MarketQuoteSnapshots', N'CalculationBasis') IS NOT NULL
-    AND COL_LENGTH(N'MarketQuoteSnapshots', N'DataQualityStatus') IS NOT NULL
-    AND COL_LENGTH(N'MarketQuoteSnapshots', N'QualityWarningsJson') IS NOT NULL
-    AND COL_LENGTH(N'MarketQuoteSnapshots', N'SourceType') IS NOT NULL
-    BEGIN
-        INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
-        VALUES (N'20260607141759_MarketQuoteQualityMetadata', N'8.0.15');
-    END;
-END;
-GO
-IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
+﻿IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
 BEGIN
     CREATE TABLE [__EFMigrationsHistory] (
         [MigrationId] nvarchar(150) NOT NULL,
@@ -1190,4 +1131,127 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [Categories] nvarchar(300) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [City] nvarchar(80) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [CoverImageUrl] nvarchar(260) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [Description] nvarchar(600) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [District] nvarchar(80) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [LogoUrl] nvarchar(260) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [SearchKeywords] nvarchar(300) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [SocialLinks] nvarchar(400) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [TaxNumber] nvarchar(40) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [TaxOffice] nvarchar(120) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [WebsiteUrl] nvarchar(180) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [WorkingHours] nvarchar(600) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260607212600_CompanyTenantProfile', N'8.0.15');
+END;
+GO
+
+COMMIT;
+GO
 

@@ -21,6 +21,7 @@ public class AdminController(
     IOptions<EmailSettings> emailOptions,
     IDashboardService dashboardService,
     IReportService reportService,
+    IWorkforceService workforceService,
     IOrderService orderService,
     IInvoiceService invoiceService,
     IOrderHistoryService orderHistoryService,
@@ -250,16 +251,40 @@ public class AdminController(
 
     [HttpGet("/admin/reports")]
     [HttpGet("/owner/reports")]
-    public async Task<IActionResult> Reports(DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken)
+    public async Task<IActionResult> Reports(string? rangePreset, DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken)
     {
         var model = new AdminReportsPageViewModel
         {
+            RangePreset = rangePreset ?? DashboardRangePresets.Monthly,
             StartDate = startDate,
             EndDate = endDate,
-            Summary = await reportService.GetProfitLossSummaryAsync(startDate, endDate, cancellationToken)
+            Summary = await reportService.GetProfitLossSummaryAsync(startDate, endDate, cancellationToken),
+            OperationalReport = await reportService.GetOperationalReportAsync(rangePreset, startDate, endDate, cancellationToken),
+            Archive = await reportService.GetArchivedReportsAsync(cancellationToken)
         };
 
         return View(model);
+    }
+
+    [HttpGet("/admin/reports/pdf")]
+    [HttpGet("/owner/reports/pdf")]
+    public async Task<IActionResult> DownloadOperationalReportPdf(
+        string? rangePreset,
+        DateTime? startDate,
+        DateTime? endDate,
+        bool archive = false,
+        CancellationToken cancellationToken = default)
+    {
+        var pdf = await reportService.GenerateOperationalReportPdfAsync(rangePreset, startDate, endDate, archive, cancellationToken);
+        return File(pdf.Content, "application/pdf", pdf.FileName);
+    }
+
+    [HttpGet("/admin/reports/archive/{fileName}")]
+    [HttpGet("/owner/reports/archive/{fileName}")]
+    public async Task<IActionResult> DownloadArchivedReport(string fileName, CancellationToken cancellationToken)
+    {
+        var pdf = await reportService.GetArchivedReportAsync(fileName, cancellationToken);
+        return File(pdf.Content, "application/pdf", pdf.FileName);
     }
 
     [HttpGet("/admin/users")]
@@ -275,6 +300,83 @@ public class AdminController(
             .ToListAsync(cancellationToken);
 
         return View(model);
+    }
+
+    [HttpGet("/admin/company/{companyId:int}")]
+    [HttpGet("/owner/company")]
+    public async Task<IActionResult> CompanyProfile(int? companyId, CancellationToken cancellationToken)
+    {
+        var resolvedCompanyId = currentUserService.IsInRole(RoleConstants.SystemAdmin)
+            ? companyId
+            : currentUserService.CompanyId;
+        if (!resolvedCompanyId.HasValue)
+        {
+            TempData["Error"] = "Firma bağlamı bulunamadı.";
+            return RedirectToPanel();
+        }
+
+        var company = await context.Companies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == resolvedCompanyId.Value, cancellationToken);
+        if (company is null)
+        {
+            TempData["Error"] = "Firma bulunamadı.";
+            return RedirectToPanel();
+        }
+
+        return View("~/Views/Admin/CompanyProfile.cshtml", new AdminCompanyProfilePageViewModel
+        {
+            CompanyId = company.Id,
+            Form = new UpdateCompanyProfileDto
+            {
+                Name = company.Name,
+                Code = company.Code,
+                Address = company.Address,
+                City = company.City,
+                District = company.District,
+                Description = company.Description,
+                LogoUrl = company.LogoUrl,
+                CoverImageUrl = company.CoverImageUrl,
+                ContactEmail = company.ContactEmail,
+                ContactPhone = company.ContactPhone,
+                WebsiteUrl = company.WebsiteUrl,
+                TaxOffice = company.TaxOffice,
+                TaxNumber = company.TaxNumber,
+                SocialLinks = company.SocialLinks,
+                WorkingHours = company.WorkingHours,
+                Categories = company.Categories,
+                SearchKeywords = company.SearchKeywords,
+                IsActive = company.IsActive
+            },
+            CategoryOptions = CompanyCategoryOptions.All
+        });
+    }
+
+    [HttpPost("/admin/company/{companyId:int}")]
+    [HttpPost("/owner/company")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateCompanyProfile(int? companyId, UpdateCompanyProfileDto form, CancellationToken cancellationToken)
+    {
+        var resolvedCompanyId = currentUserService.IsInRole(RoleConstants.SystemAdmin)
+            ? companyId
+            : currentUserService.CompanyId;
+        if (!resolvedCompanyId.HasValue)
+        {
+            TempData["Error"] = "Firma bağlamı bulunamadı.";
+            return RedirectToPanel();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Firma bilgilerini kontrol edin.";
+            return RedirectToAction(nameof(CompanyProfile), currentUserService.IsInRole(RoleConstants.SystemAdmin) ? new { companyId = resolvedCompanyId.Value } : null);
+        }
+
+        await workforceService.UpdateCompanyProfileAsync(resolvedCompanyId.Value, form, cancellationToken);
+        TempData["Success"] = "Firma profili güncellendi.";
+        return currentUserService.IsInRole(RoleConstants.SystemAdmin)
+            ? Redirect($"/admin/company/{resolvedCompanyId.Value}")
+            : Redirect("/owner/company");
     }
 
     [HttpPost("/admin/orders/status")]
@@ -778,15 +880,25 @@ public class AdminOrdersPageViewModel
 
 public class AdminReportsPageViewModel
 {
+    public string RangePreset { get; set; } = DashboardRangePresets.Monthly;
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public ProfitLossSummaryDto Summary { get; set; } = new();
+    public OperationalReportDto OperationalReport { get; set; } = new();
+    public IReadOnlyList<ReportArchiveItemDto> Archive { get; set; } = [];
 }
 
 public class AdminProductsPageViewModel
 {
     public IReadOnlyList<Product> Products { get; set; } = [];
     public IReadOnlyList<Company> Companies { get; set; } = [];
+}
+
+public class AdminCompanyProfilePageViewModel
+{
+    public int CompanyId { get; set; }
+    public UpdateCompanyProfileDto Form { get; set; } = new();
+    public IReadOnlyList<string> CategoryOptions { get; set; } = [];
 }
 
 public class AdminOrderPaymentForm

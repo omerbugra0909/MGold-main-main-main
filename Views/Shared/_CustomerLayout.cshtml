@@ -377,13 +377,13 @@
             </div>
             <nav class="nav">
                 <a class="@navClass("Customer","Index")" asp-controller="Customer" asp-action="Index">Panelim</a>
-                <a class="@navClass("Customer","Products")" asp-controller="Customer" asp-action="Products">Ürünler</a>
+                <a asp-controller="Public" asp-action="Companies">Firma Keşfet</a>
                 <a class="@navClass("Customer","Orders")" asp-controller="Customer" asp-action="Orders">Siparişlerim</a>
                 <a class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Market" ? "active" : "")" asp-controller="Market" asp-action="Customer">Canlı Piyasalar</a>
                 <a class="@navClass("Customer","Favorites")" asp-controller="Customer" asp-action="Favorites">Favoriler</a>
                 <a class="@navClass("Customer","Profile")" asp-controller="Customer" asp-action="Profile">Hesabım</a>
                 <a class="@navClass("Customer","Contact")" asp-controller="Customer" asp-action="Contact">İletişim</a>
-                <a asp-controller="Public" asp-action="Products">Mağaza</a>
+                <a asp-controller="Public" asp-action="Companies">Mağaza</a>
                 <form method="post" action="/account/logout">
                     @Html.AntiForgeryToken()
                     <button type="submit">Çıkış Yap</button>

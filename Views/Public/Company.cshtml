@@ -1,0 +1,162 @@
+@model MGold.Controllers.PublicProductsPageViewModel
+@{
+    var company = Model.SelectedCompany!;
+    ViewData["Title"] = company.Name;
+    ViewData["PageDescription"] = company.Description ?? $"{company.Name} firma profili ve ürün kataloğu.";
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+}
+
+@section Styles {
+    <style>
+        .profile-stack { display: grid; gap: 18px; }
+        .company-profile-hero {
+            position: relative;
+            overflow: hidden;
+            padding: 28px;
+            min-height: 280px;
+            display: grid;
+            align-content: end;
+            background:
+                linear-gradient(180deg, rgba(8,9,13,.22), rgba(8,9,13,.88)),
+                var(--cover, linear-gradient(135deg, rgba(227,201,145,.24), rgba(143,99,43,.2)));
+            background-size: cover;
+            background-position: center;
+        }
+        .profile-head { display: flex; gap: 16px; align-items: center; }
+        .profile-logo {
+            width: 78px; height: 78px; border-radius: 22px;
+            display: grid; place-items: center;
+            background: rgba(227,201,145,.18);
+            border: 1px solid rgba(227,201,145,.2);
+            color: var(--gold-0); font-weight: 900; font-size: 24px;
+            overflow: hidden;
+        }
+        .profile-logo img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-head h2 { margin: 0; font-size: clamp(32px, 5vw, 56px); }
+        .profile-meta, .catalog-actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+        .profile-grid { display:grid; grid-template-columns: .85fr 1.15fr; gap:18px; align-items:start; }
+        .profile-panel, .catalog-panel { padding:22px; }
+        .catalog-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:14px; }
+        .catalog-card { padding:18px; display:grid; gap:10px; }
+        .catalog-price { font-size:24px; font-weight:900; color:var(--gold-0); }
+        .review-list { display:grid; gap:10px; }
+        .review-item { padding:14px; border-radius:16px; background:rgba(255,255,255,.04); }
+        @@media (max-width: 1050px) { .profile-grid, .catalog-grid { grid-template-columns:1fr; } }
+    </style>
+}
+
+<div class="profile-stack">
+    @{
+        var cover = string.IsNullOrWhiteSpace(company.CoverImageUrl) ? "" : $"--cover:url('{company.CoverImageUrl}')";
+    }
+    <section class="surface company-profile-hero" style="@cover">
+        <div class="profile-head">
+            <div class="profile-logo">
+                @if (!string.IsNullOrWhiteSpace(company.LogoUrl))
+                {
+                    <img src="@company.LogoUrl" alt="@company.Name logo" />
+                }
+                else
+                {
+                    @company.Name[..Math.Min(company.Name.Length, 2)].ToUpperInvariant()
+                }
+            </div>
+            <div>
+                <span class="badge">@company.Categories</span>
+                <h2>@company.Name</h2>
+                <div class="profile-meta">
+                    <span class="badge">@company.City @company.District</span>
+                    <span class="badge">@company.AverageRating.ToString("N1") / 5</span>
+                    <span class="badge">@company.ProductCount ürün</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="profile-grid">
+        <aside class="surface profile-panel">
+            <h3>Firma Bilgileri</h3>
+            <p class="text-muted">@company.Description</p>
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <tbody>
+                        <tr><th>Telefon</th><td>@(company.ContactPhone ?? "-")</td></tr>
+                        <tr><th>E-posta</th><td>@(company.ContactEmail ?? "-")</td></tr>
+                        <tr><th>Web</th><td>@(company.WebsiteUrl ?? "-")</td></tr>
+                        <tr><th>Adres</th><td>@(company.Address ?? "-")</td></tr>
+                        <tr><th>Çalışma Saatleri</th><td>@(company.WorkingHours ?? "-")</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="catalog-actions" style="margin-top:14px;">
+                <a class="btn btn-secondary" asp-controller="Public" asp-action="Companies">Diğer Firmalar</a>
+                <a class="btn btn-primary" asp-controller="Public" asp-action="Products" asp-route-CompanyId="@company.Id">Kataloğu Listele</a>
+            </div>
+        </aside>
+
+        <section class="surface catalog-panel">
+            <div class="section-head">
+                <div>
+                    <span class="badge">Ürün Kataloğu</span>
+                    <h3>Seçili Firmaya Ait Ürünler</h3>
+                    <p class="text-muted">Siparişler doğrudan @company.Name firma kaydıyla ilişkilendirilir.</p>
+                </div>
+            </div>
+            @if (!Model.Products.Any())
+            {
+                <div class="empty-state">Bu firmaya ait yayınlanmış ürün bulunmuyor.</div>
+            }
+            else
+            {
+                <div class="catalog-grid">
+                    @foreach (var item in Model.Products)
+                    {
+                        <article class="surface catalog-card">
+                            <span class="badge">@item.Type</span>
+                            <h4 style="margin:0;">@item.Name</h4>
+                            <div class="text-muted">@item.Weight.ToString("N3") gr | Stok: @item.StockQuantity</div>
+                            <div class="catalog-price">@item.SalePrice.ToString("N2") TL</div>
+                            @if (User.IsInRole("Customer"))
+                            {
+                                <form method="post" asp-controller="Public" asp-action="PlaceOrder">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="productId" value="@item.Id" />
+                                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                    <input type="hidden" name="preferredPaymentMethod" value="Cash" />
+                                    <input type="number" name="quantity" min="1" value="1" />
+                                    <button class="btn btn-primary" type="submit" style="margin-top:10px;width:100%;">Sipariş Ver</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <a class="btn btn-primary" href="/auth/login">Sipariş İçin Giriş Yap</a>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    </section>
+
+    <section class="surface profile-panel">
+        <span class="badge">Yorumlar</span>
+        <h3>Firma Ürün Yorumları</h3>
+        @if (!company.Reviews.Any())
+        {
+            <div class="empty-state">Bu firma için onaylanmış yorum bulunmuyor.</div>
+        }
+        else
+        {
+            <div class="review-list">
+                @foreach (var review in company.Reviews)
+                {
+                    <article class="review-item">
+                        <strong>@review.ProductName</strong>
+                        <span class="badge">@review.Rating / 5</span>
+                        <p class="text-muted">@review.Comment</p>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</div>

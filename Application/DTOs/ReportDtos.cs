@@ -1,5 +1,47 @@
 namespace MGold.Application.DTOs;
 
+public class OperationalReportDto
+{
+    public string RangePreset { get; set; } = DashboardRangePresets.Monthly;
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
+    public string ScopeTitle { get; set; } = string.Empty;
+    public string CompanyName { get; set; } = string.Empty;
+    public IReadOnlyList<ReportMetricDto> Metrics { get; set; } = [];
+    public IReadOnlyList<ReportTableDto> Tables { get; set; } = [];
+}
+
+public class ReportMetricDto
+{
+    public string Label { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+    public string Detail { get; set; } = string.Empty;
+}
+
+public class ReportTableDto
+{
+    public string Key { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public IReadOnlyList<string> Columns { get; set; } = [];
+    public IReadOnlyList<IReadOnlyList<string>> Rows { get; set; } = [];
+}
+
+public class ReportArchiveItemDto
+{
+    public string FileName { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public long SizeBytes { get; set; }
+}
+
+public class ReportPdfResultDto
+{
+    public byte[] Content { get; set; } = [];
+    public string FileName { get; set; } = string.Empty;
+}
+
 public class ProfitLossSummaryDto
 {
     public decimal TotalRevenue { get; set; }

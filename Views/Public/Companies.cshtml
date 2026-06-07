@@ -1,0 +1,131 @@
+@model MGold.Controllers.PublicCompanySearchPageViewModel
+@{
+    ViewData["Title"] = "Firma Keşfi";
+    ViewData["PageDescription"] = "Firma adı, şehir, ilçe, kategori ve anahtar kelimeler ile MGold işletmelerini keşfedin.";
+}
+
+@section Styles {
+    <style>
+        .company-discovery { display: grid; gap: 18px; }
+        .company-hero, .company-filter, .company-card { padding: 22px; }
+        .company-hero {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            background:
+                radial-gradient(circle at top right, rgba(227,201,145,.22), transparent 28%),
+                linear-gradient(145deg, rgba(26,24,22,.98), rgba(72,48,18,.92));
+        }
+        .company-hero h2 { margin: 8px 0 0; font-size: clamp(30px, 4vw, 48px); }
+        .company-hero p { max-width: 780px; color: var(--muted); line-height: 1.7; }
+        .company-filter form { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: end; }
+        .company-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+        .company-card { display: grid; gap: 14px; overflow: hidden; }
+        .company-cover {
+            height: 120px;
+            margin: -22px -22px 0;
+            background:
+                linear-gradient(135deg, rgba(227,201,145,.22), rgba(143,99,43,.16)),
+                var(--company-cover, none);
+            background-size: cover;
+            background-position: center;
+        }
+        .company-head { display: flex; gap: 12px; align-items: center; }
+        .company-logo {
+            width: 58px; height: 58px; border-radius: 18px;
+            display: grid; place-items: center;
+            background: rgba(227,201,145,.14);
+            border: 1px solid rgba(227,201,145,.18);
+            font-weight: 900; color: var(--gold-0);
+            overflow: hidden;
+        }
+        .company-logo img { width: 100%; height: 100%; object-fit: cover; }
+        .company-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+        @@media (max-width: 1100px) { .company-grid { grid-template-columns: repeat(2, 1fr); } .company-filter form { grid-template-columns: 1fr 1fr; } }
+        @@media (max-width: 720px) { .company-grid, .company-filter form, .company-hero { grid-template-columns: 1fr; display: grid; } }
+    </style>
+}
+
+<div class="company-discovery">
+    <section class="surface company-hero">
+        <div>
+            <span class="badge">MGold Firma Ağı</span>
+            <h2>Firma Seç, Kataloğu Aç</h2>
+            <p>Ürünler artık firma bağlamında görüntülenir. Önce işletmeyi keşfet, ardından yalnızca seçtiğin firmaya ait ürünleri, yorumları ve iletişim bilgilerini incele.</p>
+        </div>
+        <div class="badge">@Model.Companies.Count firma</div>
+    </section>
+
+    <section class="surface company-filter">
+        <form method="get" asp-controller="Public" asp-action="Companies">
+            <label>
+                Anahtar kelime
+                <input name="Keyword" value="@Model.Filter.Keyword" placeholder="Firma, ürün, kategori" />
+            </label>
+            <label>
+                Şehir
+                <input name="City" value="@Model.Filter.City" placeholder="İstanbul" />
+            </label>
+            <label>
+                İlçe
+                <input name="District" value="@Model.Filter.District" placeholder="Kadıköy" />
+            </label>
+            <label>
+                Kategori
+                <select name="Category">
+                    <option value="">Tüm kategoriler</option>
+                    @foreach (var category in Model.Categories)
+                    {
+                        <option value="@category" selected="@(Model.Filter.Category == category)">@category</option>
+                    }
+                </select>
+            </label>
+            <div class="cluster">
+                <button class="btn btn-primary" type="submit">Ara</button>
+                <a class="btn btn-secondary" asp-controller="Public" asp-action="Companies">Temizle</a>
+            </div>
+        </form>
+    </section>
+
+    @if (!Model.Companies.Any())
+    {
+        <section class="surface company-card">
+            <div class="empty-state">Arama kriterlerine uygun firma bulunamadı.</div>
+        </section>
+    }
+    else
+    {
+        <section class="company-grid">
+            @foreach (var company in Model.Companies)
+            {
+                var coverStyle = string.IsNullOrWhiteSpace(company.CoverImageUrl) ? "" : $"--company-cover:url('{company.CoverImageUrl}')";
+                <article class="surface company-card" style="@coverStyle">
+                    <div class="company-cover"></div>
+                    <div class="company-head">
+                        <div class="company-logo">
+                            @if (!string.IsNullOrWhiteSpace(company.LogoUrl))
+                            {
+                                <img src="@company.LogoUrl" alt="@company.Name logo" />
+                            }
+                            else
+                            {
+                                @company.Name[..Math.Min(company.Name.Length, 2)].ToUpperInvariant()
+                            }
+                        </div>
+                        <div>
+                            <h3 style="margin:0;">@company.Name</h3>
+                            <div class="text-muted">@company.City @company.District</div>
+                        </div>
+                    </div>
+                    <p class="text-muted">@(!string.IsNullOrWhiteSpace(company.Description) ? company.Description : "Firma profili yakında daha fazla bilgiyle güncellenecek.")</p>
+                    <div class="company-meta">
+                        <span class="badge">@company.ProductCount ürün</span>
+                        <span class="badge">@company.AverageRating.ToString("N1") / 5</span>
+                        <span class="badge">@company.Categories</span>
+                    </div>
+                    <a class="btn btn-primary" href="/companies/@company.Id">Firmayı Aç</a>
+                </article>
+            }
+        </section>
+    }
+</div>

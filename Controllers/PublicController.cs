@@ -23,28 +23,45 @@ public class PublicController(
 {
     [AllowAnonymous]
     public async Task<IActionResult> Index([FromQuery] PublicProductFilterForm filter, CancellationToken cancellationToken)
+        => View("Companies", await BuildCompanySearchModelAsync(new PublicCompanySearchForm { Keyword = filter.Search }, cancellationToken));
+
+    [AllowAnonymous]
+    public async Task<IActionResult> Companies([FromQuery] PublicCompanySearchForm filter, CancellationToken cancellationToken)
     {
-        try
+        var model = await BuildCompanySearchModelAsync(filter, cancellationToken);
+        return View(model);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("/companies/{id:int}")]
+    public async Task<IActionResult> Company(int id, [FromQuery] PublicProductFilterForm filter, CancellationToken cancellationToken)
+    {
+        filter.CompanyId = id;
+        var model = await BuildPageModelAsync(cancellationToken, filterOverride: filter);
+        if (model.SelectedCompany is null)
         {
-            return View(await BuildPageModelAsync(cancellationToken, filterOverride: filter));
+            TempData["Error"] = "Firma bulunamadı veya yayında değil.";
+            return RedirectToAction(nameof(Companies));
         }
-        catch (Exception ex)
-        {
-            ViewData["LoadError"] = $"Urunler yuklenemedi: {ex.Message}";
-            return View(new PublicProductsPageViewModel());
-        }
+
+        return View(model);
     }
 
     [AllowAnonymous]
     public async Task<IActionResult> Products([FromQuery] PublicProductFilterForm filter, CancellationToken cancellationToken)
     {
+        if (!filter.CompanyId.HasValue && !currentUserService.IsInRole(RoleConstants.Manager) && !currentUserService.IsInRole(RoleConstants.SystemAdmin))
+        {
+            return RedirectToAction(nameof(Companies));
+        }
+
         try
         {
             return View(await BuildPageModelAsync(cancellationToken, filterOverride: filter));
         }
         catch (Exception ex)
         {
-            ViewData["LoadError"] = $"Urunler yuklenemedi: {ex.Message}";
+            ViewData["LoadError"] = $"Ürünler yüklenemedi: {ex.Message}";
             return View(new PublicProductsPageViewModel());
         }
     }
@@ -183,12 +200,6 @@ public class PublicController(
             return RedirectToLocal(returnUrl);
         }
 
-        if (user.CompanyId.HasValue && product.CompanyId.HasValue && user.CompanyId != product.CompanyId)
-        {
-            TempData["Error"] = "Bu urun icin siparis olusturma yetkiniz yok.";
-            return RedirectToLocal(returnUrl);
-        }
-
         if (product.StockQuantity < quantity)
         {
             TempData["Error"] = "Yeterli stok bulunmuyor.";
@@ -200,7 +211,7 @@ public class PublicController(
         {
             CustomerId = user.CustomerId.Value,
             OrderNumber = CreateOrderNumber(),
-            CompanyId = product.CompanyId ?? user.CompanyId,
+            CompanyId = product.CompanyId,
             Status = OrderStatus.Preparing,
             Notes = string.IsNullOrWhiteSpace(notes) ? $"Web siparisi: {product.Name}" : notes.Trim(),
             PreferredPaymentMethod = preferredPaymentMethod,
@@ -306,6 +317,7 @@ public class PublicController(
         var filter = filterOverride ?? new PublicProductFilterForm();
         var productQuery = context.Products
             .AsNoTracking()
+            .Include(x => x.Company)
             .AsQueryable();
         var canSeeOperations = currentUserService.IsInRole(RoleConstants.SystemAdmin)
             || currentUserService.IsInRole(RoleConstants.Manager);
@@ -313,6 +325,14 @@ public class PublicController(
         if (currentUserService.IsInRole(RoleConstants.Manager) && !currentUserService.IsInRole(RoleConstants.SystemAdmin))
         {
             productQuery = productQuery.Where(x => x.CompanyId == currentUserService.CompanyId);
+        }
+        else if (filter.CompanyId.HasValue)
+        {
+            productQuery = productQuery.Where(x => x.CompanyId == filter.CompanyId.Value && x.Company != null && x.Company.IsActive);
+        }
+        else if (!canSeeOperations)
+        {
+            productQuery = productQuery.Where(x => false);
         }
 
         if (!string.IsNullOrWhiteSpace(filter.Search))
@@ -363,7 +383,9 @@ public class PublicController(
                 SalePrice = x.SalePrice,
                 AdditionalCost = x.AdditionalCost,
                 ProfitMarginPercentage = x.ProfitMarginPercentage,
-                CreatedAt = x.CreatedAt
+                CreatedAt = x.CreatedAt,
+                CompanyId = x.CompanyId,
+                CompanyName = x.Company != null ? x.Company.Name : null
             })
             .ToListAsync(cancellationToken);
 
@@ -371,6 +393,10 @@ public class PublicController(
         if (currentUserService.IsInRole(RoleConstants.Manager) && !currentUserService.IsInRole(RoleConstants.SystemAdmin))
         {
             allProductsQuery = allProductsQuery.Where(x => x.CompanyId == currentUserService.CompanyId);
+        }
+        else if (filter.CompanyId.HasValue)
+        {
+            allProductsQuery = allProductsQuery.Where(x => x.CompanyId == filter.CompanyId.Value);
         }
 
         var allProducts = await allProductsQuery.ToListAsync(cancellationToken);
@@ -447,6 +473,9 @@ public class PublicController(
             RecentOrders = recentOrders,
             Notifications = notifications,
             RecentReviews = reviews,
+            SelectedCompany = filter.CompanyId.HasValue
+                ? await BuildCompanyProfileAsync(filter.CompanyId.Value, cancellationToken)
+                : null,
             Dashboard = new PublicDashboardViewModel
             {
                 TotalProducts = allProducts.Count,
@@ -464,6 +493,129 @@ public class PublicController(
         }
 
         return pageModel;
+    }
+
+    private async Task<PublicCompanySearchPageViewModel> BuildCompanySearchModelAsync(PublicCompanySearchForm filter, CancellationToken cancellationToken)
+    {
+        var query = context.Companies
+            .AsNoTracking()
+            .Include(x => x.Products).ThenInclude(x => x.Reviews)
+            .Include(x => x.Orders)
+            .Where(x => x.IsActive)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(filter.Keyword))
+        {
+            var keyword = filter.Keyword.Trim().ToLowerInvariant();
+            query = query.Where(x =>
+                x.Name.ToLower().Contains(keyword) ||
+                (x.Description != null && x.Description.ToLower().Contains(keyword)) ||
+                (x.SearchKeywords != null && x.SearchKeywords.ToLower().Contains(keyword)) ||
+                (x.Categories != null && x.Categories.ToLower().Contains(keyword)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.City))
+        {
+            var city = filter.City.Trim().ToLowerInvariant();
+            query = query.Where(x => x.City != null && x.City.ToLower().Contains(city));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.District))
+        {
+            var district = filter.District.Trim().ToLowerInvariant();
+            query = query.Where(x => x.District != null && x.District.ToLower().Contains(district));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Category))
+        {
+            var category = filter.Category.Trim().ToLowerInvariant();
+            query = query.Where(x => x.Categories != null && x.Categories.ToLower().Contains(category));
+        }
+
+        var companies = await query
+            .OrderBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+
+        return new PublicCompanySearchPageViewModel
+        {
+            Filter = filter,
+            Companies = companies.Select(MapCompanyCard).ToList(),
+            Categories = CompanyCategoryOptions.All
+        };
+    }
+
+    private async Task<PublicCompanyProfileViewModel?> BuildCompanyProfileAsync(int companyId, CancellationToken cancellationToken)
+    {
+        var company = await context.Companies
+            .AsNoTracking()
+            .Include(x => x.Products).ThenInclude(x => x.Reviews)
+            .Include(x => x.Orders)
+            .FirstOrDefaultAsync(x => x.Id == companyId && x.IsActive, cancellationToken);
+
+        return company is null ? null : MapCompanyProfile(company);
+    }
+
+    private static PublicCompanyCardViewModel MapCompanyCard(Company company)
+    {
+        var approvedReviews = company.Products
+            .SelectMany(x => x.Reviews)
+            .Where(x => x.Status == ReviewStatus.Approved)
+            .ToList();
+
+        return new PublicCompanyCardViewModel
+        {
+            Id = company.Id,
+            Name = company.Name,
+            Description = company.Description,
+            LogoUrl = company.LogoUrl,
+            CoverImageUrl = company.CoverImageUrl,
+            City = company.City,
+            District = company.District,
+            Categories = company.Categories,
+            AverageRating = approvedReviews.Count == 0 ? 0 : Math.Round((decimal)approvedReviews.Average(x => x.Rating), 2),
+            ReviewCount = approvedReviews.Count,
+            ProductCount = company.Products.Count,
+            OpenOrderCount = company.Orders.Count(x => x.Status is OrderStatus.Preparing or OrderStatus.Ready)
+        };
+    }
+
+    private static PublicCompanyProfileViewModel MapCompanyProfile(Company company)
+    {
+        var card = MapCompanyCard(company);
+        return new PublicCompanyProfileViewModel
+        {
+            Id = card.Id,
+            Name = card.Name,
+            Description = card.Description,
+            LogoUrl = card.LogoUrl,
+            CoverImageUrl = card.CoverImageUrl,
+            City = card.City,
+            District = card.District,
+            Categories = card.Categories,
+            AverageRating = card.AverageRating,
+            ReviewCount = card.ReviewCount,
+            ProductCount = card.ProductCount,
+            OpenOrderCount = card.OpenOrderCount,
+            ContactEmail = company.ContactEmail,
+            ContactPhone = company.ContactPhone,
+            WebsiteUrl = company.WebsiteUrl,
+            Address = company.Address,
+            WorkingHours = company.WorkingHours,
+            Reviews = company.Products
+                .SelectMany(x => x.Reviews.Select(review => new { Product = x, Review = review }))
+                .Where(x => x.Review.Status == ReviewStatus.Approved)
+                .OrderByDescending(x => x.Review.CreatedAt)
+                .Take(8)
+                .Select(x => new PublicReviewSummaryViewModel
+                {
+                    ProductName = x.Product.Name,
+                    Rating = x.Review.Rating,
+                    Comment = x.Review.Comment,
+                    Status = x.Review.Status,
+                    CreatedAt = x.Review.CreatedAt
+                })
+                .ToList()
+        };
     }
 
     private static Product MapToEntity(PublicProductForm form)
@@ -559,6 +711,7 @@ public class PublicController(
 public class PublicProductsPageViewModel
 {
     public IReadOnlyList<PublicProductViewModel> Products { get; set; } = [];
+    public PublicCompanyProfileViewModel? SelectedCompany { get; set; }
     public PublicProductForm CreateForm { get; set; } = new();
     public PublicProductEditForm EditForm { get; set; } = new();
     public PublicProductFilterForm Filter { get; set; } = new();
@@ -609,6 +762,8 @@ public class PublicProductForm
 public class PublicProductViewModel
 {
     public int Id { get; set; }
+    public int? CompanyId { get; set; }
+    public string? CompanyName { get; set; }
     public string Name { get; set; } = string.Empty;
     public ProductType Type { get; set; }
     public int StockQuantity { get; set; }
@@ -630,12 +785,71 @@ public class PublicProductEditForm : PublicProductForm
 
 public class PublicProductFilterForm
 {
+    public int? CompanyId { get; set; }
     public string? Search { get; set; }
     public ProductType? Type { get; set; }
     public decimal? MinPrice { get; set; }
     public decimal? MaxPrice { get; set; }
     public bool InStockOnly { get; set; }
     public bool LowStockOnly { get; set; }
+}
+
+public class PublicCompanySearchForm
+{
+    public string? Keyword { get; set; }
+    public string? City { get; set; }
+    public string? District { get; set; }
+    public string? Category { get; set; }
+}
+
+public class PublicCompanySearchPageViewModel
+{
+    public PublicCompanySearchForm Filter { get; set; } = new();
+    public IReadOnlyList<PublicCompanyCardViewModel> Companies { get; set; } = [];
+    public IReadOnlyList<string> Categories { get; set; } = [];
+}
+
+public class PublicCompanyCardViewModel
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? LogoUrl { get; set; }
+    public string? CoverImageUrl { get; set; }
+    public string? City { get; set; }
+    public string? District { get; set; }
+    public string? Categories { get; set; }
+    public decimal AverageRating { get; set; }
+    public int ReviewCount { get; set; }
+    public int ProductCount { get; set; }
+    public int OpenOrderCount { get; set; }
+}
+
+public class PublicCompanyProfileViewModel : PublicCompanyCardViewModel
+{
+    public string? ContactEmail { get; set; }
+    public string? ContactPhone { get; set; }
+    public string? WebsiteUrl { get; set; }
+    public string? Address { get; set; }
+    public string? WorkingHours { get; set; }
+    public IReadOnlyList<PublicReviewSummaryViewModel> Reviews { get; set; } = [];
+}
+
+public static class CompanyCategoryOptions
+{
+    public static readonly IReadOnlyList<string> All =
+    [
+        "Kuyumcu",
+        "Altın ve Mücevherat",
+        "Gümüş ve Takı",
+        "Saatçilik",
+        "Değerli Taşlar",
+        "Finansal Altın",
+        "Döviz ve Emtia",
+        "Koleksiyon Ürünleri",
+        "Hediyelik Ürünler",
+        "Atölye ve Özel Tasarım"
+    ];
 }
 
 public class PublicDashboardViewModel

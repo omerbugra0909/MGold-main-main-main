@@ -1,0 +1,128 @@
+@model MGold.Controllers.AdminCompanyProfilePageViewModel
+@{
+    ViewData["Title"] = "Firma Profili";
+    ViewData["PageDescription"] = "Firma keşif kartı, profil sayfası ve katalog bağlamında kullanılan işletme bilgilerini yönetin.";
+    var isSystemAdmin = User.IsInRole("SystemAdmin");
+    var action = isSystemAdmin ? $"/admin/company/{Model.CompanyId}" : "/owner/company";
+}
+
+<style>
+    .company-admin { display:grid; gap:18px; }
+    .company-admin-hero, .company-admin-form { padding:22px; }
+    .company-admin-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:14px; }
+    .company-admin-wide { grid-column: span 3; }
+    .company-admin-actions { display:flex; gap:10px; flex-wrap:wrap; }
+    @@media (max-width: 980px) { .company-admin-grid { grid-template-columns:1fr; } .company-admin-wide { grid-column:span 1; } }
+</style>
+
+<div class="company-admin">
+    <section class="surface company-admin-hero">
+        <span class="badge">Firma Profili</span>
+        <h2>Mağaza Kimliği</h2>
+        <p class="text-muted">Bu bilgiler müşteri keşif ekranında, firma profilinde ve katalog sayfalarında görünür.</p>
+    </section>
+
+    @if (TempData["Success"] is string ok)
+    {
+        <div class="message message-success">@ok</div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div class="message message-error">@error</div>
+    }
+
+    <section class="surface company-admin-form">
+        <form method="post" action="@action" class="company-admin-grid">
+            @Html.AntiForgeryToken()
+            <label>
+                Firma Adı
+                <input asp-for="Form.Name" name="Name" required />
+            </label>
+            <label>
+                Kısa Kod
+                <input asp-for="Form.Code" name="Code" />
+            </label>
+            <label>
+                Durum
+                <select asp-for="Form.IsActive" name="IsActive" disabled="@(!isSystemAdmin)">
+                    <option value="true">Aktif</option>
+                    <option value="false">Pasif</option>
+                </select>
+                @if (!isSystemAdmin)
+                {
+                    <input type="hidden" name="IsActive" value="@Model.Form.IsActive.ToString().ToLowerInvariant()" />
+                }
+            </label>
+            <label>
+                Şehir
+                <input asp-for="Form.City" name="City" />
+            </label>
+            <label>
+                İlçe
+                <input asp-for="Form.District" name="District" />
+            </label>
+            <label>
+                Telefon
+                <input asp-for="Form.ContactPhone" name="ContactPhone" />
+            </label>
+            <label>
+                E-posta
+                <input asp-for="Form.ContactEmail" name="ContactEmail" type="email" />
+            </label>
+            <label>
+                Web Sitesi
+                <input asp-for="Form.WebsiteUrl" name="WebsiteUrl" />
+            </label>
+            <label>
+                Kategoriler
+                <input asp-for="Form.Categories" name="Categories" list="companyCategories" placeholder="Kuyumcu, Saatçilik" />
+                <datalist id="companyCategories">
+                    @foreach (var category in Model.CategoryOptions)
+                    {
+                        <option value="@category"></option>
+                    }
+                </datalist>
+            </label>
+            <label class="company-admin-wide">
+                Açıklama
+                <textarea asp-for="Form.Description" name="Description" rows="4"></textarea>
+            </label>
+            <label class="company-admin-wide">
+                Adres
+                <textarea asp-for="Form.Address" name="Address" rows="3"></textarea>
+            </label>
+            <label>
+                Logo URL
+                <input asp-for="Form.LogoUrl" name="LogoUrl" />
+            </label>
+            <label>
+                Kapak Görseli URL
+                <input asp-for="Form.CoverImageUrl" name="CoverImageUrl" />
+            </label>
+            <label>
+                Arama Anahtarları
+                <input asp-for="Form.SearchKeywords" name="SearchKeywords" placeholder="altın, alyans, döviz" />
+            </label>
+            <label>
+                Vergi Dairesi
+                <input asp-for="Form.TaxOffice" name="TaxOffice" />
+            </label>
+            <label>
+                Vergi No
+                <input asp-for="Form.TaxNumber" name="TaxNumber" />
+            </label>
+            <label>
+                Sosyal Medya
+                <input asp-for="Form.SocialLinks" name="SocialLinks" placeholder="instagram, facebook, linkedin" />
+            </label>
+            <label class="company-admin-wide">
+                Çalışma Saatleri
+                <textarea asp-for="Form.WorkingHours" name="WorkingHours" rows="3" placeholder="Hafta içi 09:00-19:00, Cumartesi 10:00-18:00"></textarea>
+            </label>
+            <div class="company-admin-actions company-admin-wide">
+                <button class="btn btn-primary" type="submit">Firma Profilini Kaydet</button>
+                <a class="btn btn-secondary" href="/companies/@Model.CompanyId">Müşteri Profilini Gör</a>
+            </div>
+        </form>
+    </section>
+</div>

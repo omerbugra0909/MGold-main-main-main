@@ -26,14 +26,24 @@ public class CustomerController(
         => View(await BuildDashboardAsync(cancellationToken));
 
     [HttpGet("products")]
-    public async Task<IActionResult> Products(string? search, ProductType? type, CancellationToken cancellationToken)
+    public async Task<IActionResult> Products(int? companyId, string? search, ProductType? type, CancellationToken cancellationToken)
     {
         var user = await GetCurrentUserAsync(cancellationToken);
-        var query = context.Products.AsNoTracking().AsQueryable();
-        if (user.CompanyId.HasValue)
+        if (!companyId.HasValue)
         {
-            query = query.Where(x => x.CompanyId == user.CompanyId);
+            return RedirectToAction("Companies", "Public");
         }
+
+        var company = await context.Companies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == companyId.Value && x.IsActive, cancellationToken);
+        if (company is null)
+        {
+            TempData["Error"] = "Firma bulunamadı veya yayında değil.";
+            return RedirectToAction("Companies", "Public");
+        }
+
+        var query = context.Products.AsNoTracking().Where(x => x.CompanyId == companyId.Value);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -56,6 +66,8 @@ public class CustomerController(
         {
             Search = search,
             Type = type,
+            CompanyId = company.Id,
+            CompanyName = company.Name,
             Products = await query
                 .OrderByDescending(x => x.CreatedAt)
                 .ThenBy(x => x.Name)
@@ -83,7 +95,7 @@ public class CustomerController(
         var product = await context.Products
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == productId, cancellationToken);
-        if (product is null || (user.CompanyId.HasValue && product.CompanyId != user.CompanyId))
+        if (product is null)
         {
             TempData["Error"] = "Urun bulunamadi veya bu urune erisim yetkiniz yok.";
             return RedirectToLocal(returnUrl, nameof(Favorites));
@@ -122,7 +134,6 @@ public class CustomerController(
                 .AsNoTracking()
                 .Where(x => x.CustomerId == user.CustomerId)
                 .Include(x => x.Product)
-                .Where(x => !user.CompanyId.HasValue || x.Product.CompanyId == user.CompanyId)
                 .OrderByDescending(x => x.CreatedAt)
                 .Select(x => new CustomerFavoriteViewModel
                 {
@@ -282,7 +293,6 @@ public class CustomerController(
             .AsNoTracking()
             .Where(x => x.CustomerId == user.CustomerId)
             .Include(x => x.Product)
-            .Where(x => !user.CompanyId.HasValue || x.Product.CompanyId == user.CompanyId)
             .OrderByDescending(x => x.CreatedAt)
             .Take(6)
             .ToListAsync(cancellationToken);
@@ -308,7 +318,7 @@ public class CustomerController(
             MarketWatchlistCount = market.Watchlist.Count,
             ProductsCount = await context.Products
                 .AsNoTracking()
-                .CountAsync(x => !user.CompanyId.HasValue || x.CompanyId == user.CompanyId, cancellationToken),
+                .CountAsync(x => x.CompanyId.HasValue && x.Company != null && x.Company.IsActive, cancellationToken),
             UnresolvedContactCount = recentMessages.Count(x => !x.IsResolved),
             Orders = orders.Select(x => new CustomerOrderSummaryViewModel
             {
@@ -423,6 +433,8 @@ public class CustomerOrderSummaryViewModel
 
 public class CustomerProductsPageViewModel
 {
+    public int CompanyId { get; set; }
+    public string CompanyName { get; set; } = string.Empty;
     public string? Search { get; set; }
     public ProductType? Type { get; set; }
     public IReadOnlyList<CustomerProductCardViewModel> Products { get; set; } = [];

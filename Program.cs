@@ -863,6 +863,18 @@ static void ApplySqliteDevelopmentUpgrades(string? connectionString)
     connection.Open();
 
     EnsureCompaniesTable(connection);
+    EnsureSqliteColumn(connection, "Companies", "City", "TEXT NULL");
+    EnsureSqliteColumn(connection, "Companies", "District", "TEXT NULL");
+    EnsureSqliteColumn(connection, "Companies", "Description", "TEXT NULL");
+    EnsureSqliteColumn(connection, "Companies", "LogoUrl", "TEXT NULL");
+    EnsureSqliteColumn(connection, "Companies", "CoverImageUrl", "TEXT NULL");
+    EnsureSqliteColumn(connection, "Companies", "WebsiteUrl", "TEXT NULL");
+    EnsureSqliteColumn(connection, "Companies", "TaxOffice", "TEXT NULL");
+    EnsureSqliteColumn(connection, "Companies", "TaxNumber", "TEXT NULL");
+    EnsureSqliteColumn(connection, "Companies", "SocialLinks", "TEXT NULL");
+    EnsureSqliteColumn(connection, "Companies", "WorkingHours", "TEXT NULL");
+    EnsureSqliteColumn(connection, "Companies", "Categories", "TEXT NULL");
+    EnsureSqliteColumn(connection, "Companies", "SearchKeywords", "TEXT NULL");
     EnsureSqliteColumn(connection, "AppUsers", "Email", "TEXT NOT NULL DEFAULT ''");
     EnsureSqliteColumn(connection, "AppUsers", "Phone", "TEXT NOT NULL DEFAULT ''");
     EnsureSqliteColumn(connection, "AppUsers", "CustomerId", "INTEGER NULL");
@@ -944,8 +956,20 @@ static void EnsureCompaniesTable(SqliteConnection connection)
             Name TEXT NOT NULL,
             Code TEXT NULL,
             Address TEXT NULL,
+            City TEXT NULL,
+            District TEXT NULL,
+            Description TEXT NULL,
+            LogoUrl TEXT NULL,
+            CoverImageUrl TEXT NULL,
             ContactEmail TEXT NULL,
             ContactPhone TEXT NULL,
+            WebsiteUrl TEXT NULL,
+            TaxOffice TEXT NULL,
+            TaxNumber TEXT NULL,
+            SocialLinks TEXT NULL,
+            WorkingHours TEXT NULL,
+            Categories TEXT NULL,
+            SearchKeywords TEXT NULL,
             IsActive INTEGER NOT NULL DEFAULT 1,
             CreatedAt TEXT NOT NULL
         );

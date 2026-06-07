@@ -16,11 +16,47 @@ public class Company
     [MaxLength(160)]
     public string? Address { get; set; }
 
+    [MaxLength(80)]
+    public string? City { get; set; }
+
+    [MaxLength(80)]
+    public string? District { get; set; }
+
+    [MaxLength(600)]
+    public string? Description { get; set; }
+
+    [MaxLength(260)]
+    public string? LogoUrl { get; set; }
+
+    [MaxLength(260)]
+    public string? CoverImageUrl { get; set; }
+
     [MaxLength(150)]
     public string? ContactEmail { get; set; }
 
     [MaxLength(30)]
     public string? ContactPhone { get; set; }
+
+    [MaxLength(180)]
+    public string? WebsiteUrl { get; set; }
+
+    [MaxLength(120)]
+    public string? TaxOffice { get; set; }
+
+    [MaxLength(40)]
+    public string? TaxNumber { get; set; }
+
+    [MaxLength(400)]
+    public string? SocialLinks { get; set; }
+
+    [MaxLength(600)]
+    public string? WorkingHours { get; set; }
+
+    [MaxLength(300)]
+    public string? Categories { get; set; }
+
+    [MaxLength(300)]
+    public string? SearchKeywords { get; set; }
 
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

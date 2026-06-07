@@ -13,6 +13,8 @@
     .platform-list article { padding: 16px; border-radius: 18px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.05); }
     .platform-forms { grid-template-columns: 1fr 1fr; }
     .platform-forms form { display:grid; gap:12px; }
+    .company-form-grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    .company-form-grid .wide { grid-column: span 2; }
     @@media (max-width: 1100px) { .platform-grid, .platform-cards, .platform-forms { grid-template-columns: 1fr; } }
 </style>
 
@@ -34,6 +36,10 @@
                     <strong>@company.Name</strong>
                     <div class="text-muted" style="margin-top:8px;">Kod: @(company.Code ?? "-") • Urun: @company.ProductCount • Acik Siparis: @company.OpenOrderCount</div>
                     <div class="text-muted" style="margin-top:6px;">Yoneticiler: @company.ManagerCount • Calisanlar: @company.EmployeeCount • Bekleyen Gorevler: @company.PendingTaskCount</div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+                        <a class="btn btn-secondary" href="/admin/company/@company.Id">Profili Düzenle</a>
+                        <a class="btn btn-secondary" href="/companies/@company.Id">Yayındaki Profili Gör</a>
+                    </div>
                 </article>
             }
         </div>
@@ -45,11 +51,25 @@
             <h3>Firma Olustur</h3>
             <form method="post" action="/admin/platform/companies">
                 @Html.AntiForgeryToken()
-                <input type="text" name="Name" placeholder="Firma adi" required />
-                <input type="text" name="Code" placeholder="Kisa kod" />
-                <input type="text" name="Address" placeholder="Adres" />
-                <input type="email" name="ContactEmail" placeholder="Firma e-postasi" />
-                <input type="text" name="ContactPhone" placeholder="Telefon" />
+                <div class="company-form-grid">
+                    <input type="text" name="Name" placeholder="Firma adı" required />
+                    <input type="text" name="Code" placeholder="Kısa kod" />
+                    <input type="text" name="City" placeholder="Şehir" />
+                    <input type="text" name="District" placeholder="İlçe" />
+                    <input type="email" name="ContactEmail" placeholder="Firma e-postası" />
+                    <input type="text" name="ContactPhone" placeholder="Telefon" />
+                    <input type="text" name="WebsiteUrl" placeholder="Web sitesi" />
+                    <input type="text" name="Categories" placeholder="Kategoriler" />
+                    <input class="wide" type="text" name="LogoUrl" placeholder="Logo URL" />
+                    <input class="wide" type="text" name="CoverImageUrl" placeholder="Kapak görseli URL" />
+                    <textarea class="wide" name="Description" rows="3" placeholder="Firma açıklaması"></textarea>
+                    <textarea class="wide" name="Address" rows="3" placeholder="Adres"></textarea>
+                    <textarea class="wide" name="WorkingHours" rows="2" placeholder="Çalışma saatleri"></textarea>
+                    <input type="text" name="TaxOffice" placeholder="Vergi dairesi" />
+                    <input type="text" name="TaxNumber" placeholder="Vergi no" />
+                    <input class="wide" type="text" name="SocialLinks" placeholder="Sosyal medya bağlantıları" />
+                    <input class="wide" type="text" name="SearchKeywords" placeholder="Arama anahtarları" />
+                </div>
                 <button type="submit" class="btn btn-primary">Firma Kaydet</button>
             </form>
         </article>

@@ -1,7 +1,7 @@
 @model MGold.Controllers.CustomerProductsPageViewModel
 @{
-    ViewData["Title"] = "Urunler";
-    ViewData["PageDescription"] = "Filtrele, favorile ve satin alma karari icin urunleri musteri akisinda incele.";
+    ViewData["Title"] = $"{Model.CompanyName} Ürünleri";
+    ViewData["PageDescription"] = "Seçili firmaya ait ürünleri müşteri akışında inceleyin.";
     var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
 }
 
@@ -55,7 +55,12 @@
     }
 
     <section class="surface filter-card">
+        <div style="margin-bottom:14px;">
+            <span class="badge">Seçili Firma</span>
+            <h2 style="margin:8px 0 0;">@Model.CompanyName</h2>
+        </div>
         <form method="get" class="filters">
+            <input type="hidden" name="companyId" value="@Model.CompanyId" />
             <input type="text" name="search" value="@Model.Search" placeholder="Urun ara" />
             <select name="type" asp-items="Html.GetEnumSelectList<MGold.Domain.Enums.ProductType>()">
                 <option value="">Tum kategoriler</option>
@@ -86,7 +91,7 @@
                         <div class="text-muted" style="margin-top:8px;">@product.Weight.ToString("N2") gr • Stok: @product.StockQuantity</div>
                         <div style="margin-top:14px; font-family:'Space Grotesk', sans-serif; font-size:28px; color:var(--brand-strong);">@product.SalePrice.ToString("N2") TL</div>
                         <div class="actions">
-                            <a asp-controller="Public" asp-action="Products" class="btn btn-secondary">Magazada Ac</a>
+                            <a href="/companies/@Model.CompanyId" class="btn btn-secondary">Firma Profilinde Aç</a>
                             <form method="post" asp-action="ToggleFavorite">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="productId" value="@product.Id" />

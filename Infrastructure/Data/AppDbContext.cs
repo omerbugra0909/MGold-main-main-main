@@ -40,8 +40,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(x => x.Name).HasMaxLength(140);
             entity.Property(x => x.Code).HasMaxLength(80);
             entity.Property(x => x.Address).HasMaxLength(160);
+            entity.Property(x => x.City).HasMaxLength(80);
+            entity.Property(x => x.District).HasMaxLength(80);
+            entity.Property(x => x.Description).HasMaxLength(600);
+            entity.Property(x => x.LogoUrl).HasMaxLength(260);
+            entity.Property(x => x.CoverImageUrl).HasMaxLength(260);
             entity.Property(x => x.ContactEmail).HasMaxLength(150);
             entity.Property(x => x.ContactPhone).HasMaxLength(30);
+            entity.Property(x => x.WebsiteUrl).HasMaxLength(180);
+            entity.Property(x => x.TaxOffice).HasMaxLength(120);
+            entity.Property(x => x.TaxNumber).HasMaxLength(40);
+            entity.Property(x => x.SocialLinks).HasMaxLength(400);
+            entity.Property(x => x.WorkingHours).HasMaxLength(600);
+            entity.Property(x => x.Categories).HasMaxLength(300);
+            entity.Property(x => x.SearchKeywords).HasMaxLength(300);
         });
 
         modelBuilder.Entity<Product>(entity =>

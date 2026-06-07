@@ -87,6 +87,67 @@ BEGIN
     END;
 END;
 GO
+
+IF OBJECT_ID(N'[Companies]', N'U') IS NOT NULL
+BEGIN
+    IF COL_LENGTH(N'Companies', N'Categories') IS NULL
+        ALTER TABLE [Companies] ADD [Categories] nvarchar(300) NULL;
+
+    IF COL_LENGTH(N'Companies', N'City') IS NULL
+        ALTER TABLE [Companies] ADD [City] nvarchar(80) NULL;
+
+    IF COL_LENGTH(N'Companies', N'CoverImageUrl') IS NULL
+        ALTER TABLE [Companies] ADD [CoverImageUrl] nvarchar(260) NULL;
+
+    IF COL_LENGTH(N'Companies', N'Description') IS NULL
+        ALTER TABLE [Companies] ADD [Description] nvarchar(600) NULL;
+
+    IF COL_LENGTH(N'Companies', N'District') IS NULL
+        ALTER TABLE [Companies] ADD [District] nvarchar(80) NULL;
+
+    IF COL_LENGTH(N'Companies', N'LogoUrl') IS NULL
+        ALTER TABLE [Companies] ADD [LogoUrl] nvarchar(260) NULL;
+
+    IF COL_LENGTH(N'Companies', N'SearchKeywords') IS NULL
+        ALTER TABLE [Companies] ADD [SearchKeywords] nvarchar(300) NULL;
+
+    IF COL_LENGTH(N'Companies', N'SocialLinks') IS NULL
+        ALTER TABLE [Companies] ADD [SocialLinks] nvarchar(400) NULL;
+
+    IF COL_LENGTH(N'Companies', N'TaxNumber') IS NULL
+        ALTER TABLE [Companies] ADD [TaxNumber] nvarchar(40) NULL;
+
+    IF COL_LENGTH(N'Companies', N'TaxOffice') IS NULL
+        ALTER TABLE [Companies] ADD [TaxOffice] nvarchar(120) NULL;
+
+    IF COL_LENGTH(N'Companies', N'WebsiteUrl') IS NULL
+        ALTER TABLE [Companies] ADD [WebsiteUrl] nvarchar(180) NULL;
+
+    IF COL_LENGTH(N'Companies', N'WorkingHours') IS NULL
+        ALTER TABLE [Companies] ADD [WorkingHours] nvarchar(600) NULL;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM [__EFMigrationsHistory]
+        WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+    )
+    AND COL_LENGTH(N'Companies', N'Categories') IS NOT NULL
+    AND COL_LENGTH(N'Companies', N'City') IS NOT NULL
+    AND COL_LENGTH(N'Companies', N'CoverImageUrl') IS NOT NULL
+    AND COL_LENGTH(N'Companies', N'Description') IS NOT NULL
+    AND COL_LENGTH(N'Companies', N'District') IS NOT NULL
+    AND COL_LENGTH(N'Companies', N'LogoUrl') IS NOT NULL
+    AND COL_LENGTH(N'Companies', N'SearchKeywords') IS NOT NULL
+    AND COL_LENGTH(N'Companies', N'SocialLinks') IS NOT NULL
+    AND COL_LENGTH(N'Companies', N'TaxNumber') IS NOT NULL
+    AND COL_LENGTH(N'Companies', N'TaxOffice') IS NOT NULL
+    AND COL_LENGTH(N'Companies', N'WebsiteUrl') IS NOT NULL
+    AND COL_LENGTH(N'Companies', N'WorkingHours') IS NOT NULL
+    BEGIN
+        INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+        VALUES (N'20260607212600_CompanyTenantProfile', N'8.0.15');
+    END;
+END;
+GO
 IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
 BEGIN
     CREATE TABLE [__EFMigrationsHistory] (
@@ -1220,5 +1281,128 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [Categories] nvarchar(300) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [City] nvarchar(80) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [CoverImageUrl] nvarchar(260) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [Description] nvarchar(600) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [District] nvarchar(80) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [LogoUrl] nvarchar(260) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [SearchKeywords] nvarchar(300) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [SocialLinks] nvarchar(400) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [TaxNumber] nvarchar(40) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [TaxOffice] nvarchar(120) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [WebsiteUrl] nvarchar(180) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    ALTER TABLE [Companies] ADD [WorkingHours] nvarchar(600) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260607212600_CompanyTenantProfile'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260607212600_CompanyTenantProfile', N'8.0.15');
+END;
+GO
+
+COMMIT;
+GO
 
 

@@ -1,85 +1,118 @@
+@using MGold.Application.DTOs
 @model MGold.Controllers.AdminReportsPageViewModel
 @{
     ViewData["Title"] = "Raporlama";
-    ViewData["PageDescription"] = "Kar/zarar, stok degeri ve urun bazli satis performansi filtrelenebilir rapor halinde listelenir.";
-    var summary = Model.Summary;
+    ViewData["PageDescription"] = "Ürün, sipariş, müşteri, görev, bildirim, yorum, stok, satış ve sistem istatistiklerini tablo halinde izleyin.";
+    var report = Model.OperationalReport;
+    var isSystemAdmin = User.IsInRole("SystemAdmin");
+    var panelBase = isSystemAdmin ? "/admin" : "/owner";
+    var routeValues = new
+    {
+        rangePreset = report.RangePreset,
+        startDate = Model.StartDate?.ToString("yyyy-MM-dd"),
+        endDate = Model.EndDate?.ToString("yyyy-MM-dd")
+    };
+    var presets = new[]
+    {
+        new { Value = DashboardRangePresets.Daily, Label = "Günlük" },
+        new { Value = DashboardRangePresets.Weekly, Label = "Haftalık" },
+        new { Value = DashboardRangePresets.Monthly, Label = "Aylık" },
+        new { Value = DashboardRangePresets.Yearly, Label = "Yıllık" }
+    };
 }
 
-<section class="surface" style="padding:22px;">
-    <div class="section-head">
-        <div>
-            <span class="badge">Raporlama</span>
-            <h2>Kar/Zarar Raporu</h2>
-            <p class="text-muted">Tarih araligi secerek finansal ozetleri ve urun bazli performansi yazdirilabilir rapor olarak hazirlayin.</p>
-        </div>
-        <button type="button" class="btn btn-primary" onclick="window.print()">Yazdir / PDF</button>
+<section class="surface report-hero">
+    <div>
+        <span class="badge">Raporlama</span>
+        <h2>Operasyon Raporları</h2>
+        <p class="text-muted">
+            @report.ScopeTitle için @report.StartDate.ToLocalTime().ToString("dd.MM.yyyy") -
+            @report.EndDate.ToLocalTime().ToString("dd.MM.yyyy") aralığındaki güncel durum.
+        </p>
     </div>
+    <div class="report-actions">
+        <a class="btn btn-secondary"
+           href="@($"{panelBase}/reports/pdf?rangePreset={report.RangePreset}&startDate={Model.StartDate?.ToString("yyyy-MM-dd")}&endDate={Model.EndDate?.ToString("yyyy-MM-dd")}")">
+            PDF İndir
+        </a>
+        <a class="btn btn-primary"
+           href="@($"{panelBase}/reports/pdf?archive=true&rangePreset={report.RangePreset}&startDate={Model.StartDate?.ToString("yyyy-MM-dd")}&endDate={Model.EndDate?.ToString("yyyy-MM-dd")}")">
+            PDF İndir ve Arşivle
+        </a>
+    </div>
+</section>
 
-    <form method="get" class="form-grid" style="margin-top:18px;">
+<section class="surface report-filter">
+    <form method="get" class="report-filter-form">
         <label>
-            Baslangic
+            Dönem
+            <select name="rangePreset">
+                @foreach (var preset in presets)
+                {
+                    <option value="@preset.Value" selected="@(report.RangePreset == preset.Value)">@preset.Label</option>
+                }
+            </select>
+        </label>
+        <label>
+            Başlangıç
             <input type="date" name="startDate" value="@Model.StartDate?.ToString("yyyy-MM-dd")" />
         </label>
         <label>
-            Bitis
+            Bitiş
             <input type="date" name="endDate" value="@Model.EndDate?.ToString("yyyy-MM-dd")" />
         </label>
-        <div class="cluster" style="align-self:end;">
+        <div class="report-filter-buttons">
             <button type="submit" class="btn btn-primary">Filtrele</button>
-            <a class="btn btn-secondary" asp-action="Reports">Temizle</a>
+            <a class="btn btn-secondary" href="@($"{panelBase}/reports")">Temizle</a>
         </div>
     </form>
 </section>
 
-<section class="metric-grid" style="margin-top:18px;">
-    <article class="surface metric-card"><span>Toplam Gelir</span><strong>@summary.TotalRevenue.ToString("N2") TL</strong></article>
-    <article class="surface metric-card"><span>Satilan Mal Maliyeti</span><strong>@summary.TotalCostOfSoldGoods.ToString("N2") TL</strong></article>
-    <article class="surface metric-card"><span>Net Kar/Zarar</span><strong>@summary.NetProfitOrLoss.ToString("N2") TL</strong></article>
-    <article class="surface metric-card"><span>Stok Tahmini Deger</span><strong>@summary.InventoryEstimatedRevenue.ToString("N2") TL</strong></article>
-</section>
-
-<section class="surface" style="padding:22px; margin-top:18px;">
-    <h3>Detayli Ozet</h3>
-    <div class="data-table-wrap" style="margin-top:16px;">
-        <table class="data-table">
-            <tbody>
-                <tr><th>Toplam Yatirim</th><td>@summary.TotalInvestmentAmount.ToString("N2") TL</td></tr>
-                <tr><th>Malzeme Maliyeti</th><td>@summary.TotalMaterialCostOfSales.ToString("N2") TL</td></tr>
-                <tr><th>Iscilik Maliyeti</th><td>@summary.TotalLaborCostOfSales.ToString("N2") TL</td></tr>
-                <tr><th>Ek Maliyet</th><td>@summary.TotalAdditionalCostOfSales.ToString("N2") TL</td></tr>
-                <tr><th>Satis Islemi</th><td>@summary.TotalSalesTransactions</td></tr>
-                <tr><th>Alis Islemi</th><td>@summary.TotalBuyTransactions</td></tr>
-            </tbody>
-        </table>
-    </div>
-</section>
-
-<section class="surface" style="padding:22px; margin-top:18px;">
-    <h3>Urun Bazli Performans</h3>
-    @if (!summary.ProductBreakdown.Any())
+<section class="metric-grid report-metrics">
+    @foreach (var metric in report.Metrics)
     {
-        <div class="empty-state" style="margin-top:16px;">Secili aralikta satis verisi bulunmuyor.</div>
+        <article class="surface metric-card">
+            <span>@metric.Label</span>
+            <strong>@metric.Value</strong>
+            <small class="text-muted">@metric.Detail</small>
+        </article>
+    }
+</section>
+
+<section class="surface report-archive">
+    <div class="section-head">
+        <div>
+            <span class="badge">Arşiv</span>
+            <h3>Oluşturulan PDF Raporları</h3>
+            <p class="text-muted">Arşivlenen raporlar rol ve firma kapsamına göre ayrılır.</p>
+        </div>
+    </div>
+    @if (!Model.Archive.Any())
+    {
+        <div class="empty-state">Henüz arşivlenmiş rapor bulunmuyor.</div>
     }
     else
     {
-        <div class="data-table-wrap" style="margin-top:16px;">
+        <div class="data-table-wrap">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Urun</th>
-                        <th>Gelir</th>
-                        <th>Maliyet</th>
-                        <th>Kar/Zarar</th>
+                        <th>Rapor</th>
+                        <th>Tarih</th>
+                        <th>Boyut</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in summary.ProductBreakdown)
+                    @foreach (var item in Model.Archive)
                     {
                         <tr>
-                            <td>@item.ProductName</td>
-                            <td>@item.Revenue.ToString("N2") TL</td>
-                            <td>@item.Cost.ToString("N2") TL</td>
-                            <td>@item.ProfitOrLoss.ToString("N2") TL</td>
+                            <td>@item.Title</td>
+                            <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@((item.SizeBytes / 1024m).ToString("N1")) KB</td>
+                            <td>
+                                <a class="btn btn-secondary" href="@($"{panelBase}/reports/archive/{Uri.EscapeDataString(item.FileName)}")">İndir</a>
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -88,9 +121,107 @@
     }
 </section>
 
+@foreach (var table in report.Tables)
+{
+    <section class="surface report-table-section">
+        <div class="section-head">
+            <div>
+                <span class="badge">@table.Key</span>
+                <h3>@table.Title</h3>
+                <p class="text-muted">@table.Description</p>
+            </div>
+        </div>
+        @if (!table.Rows.Any())
+        {
+            <div class="empty-state">Bu bölüm için kayıt bulunamadı.</div>
+        }
+        else
+        {
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            @foreach (var column in table.Columns)
+                            {
+                                <th>@column</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in table.Rows)
+                        {
+                            <tr>
+                                @foreach (var cell in row)
+                                {
+                                    <td>@cell</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
 <style>
+    .report-hero,
+    .report-filter,
+    .report-archive,
+    .report-table-section {
+        padding: 22px;
+        margin-bottom: 18px;
+    }
+
+    .report-hero {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+    }
+
+    .report-actions,
+    .report-filter-buttons {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .report-filter-form {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+        gap: 14px;
+        align-items: end;
+    }
+
+    .report-metrics {
+        margin: 18px 0;
+    }
+
+    .metric-card small {
+        display: block;
+        margin-top: 6px;
+        font-size: 12px;
+    }
+
+    .report-table-section .data-table td,
+    .report-table-section .data-table th {
+        white-space: nowrap;
+    }
+
+    @@media (max-width: 900px) {
+        .report-hero {
+            display: grid;
+        }
+
+        .report-filter-form {
+            grid-template-columns: 1fr;
+        }
+    }
+
     @@media print {
-        .admin-sidebar, .admin-topbar, .btn, form { display: none !important; }
+        .admin-sidebar, .admin-topbar, .btn, .report-filter, .report-archive { display: none !important; }
         body { background: #fff !important; color: #111 !important; }
         .surface, .metric-card { box-shadow: none !important; border: 1px solid #ddd !important; color: #111 !important; }
     }

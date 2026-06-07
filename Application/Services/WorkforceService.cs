@@ -26,6 +26,7 @@ public class WorkforceService(
             .Include(x => x.Users)
             .Include(x => x.Customers)
             .Include(x => x.Products)
+                .ThenInclude(x => x.Reviews)
             .Include(x => x.Orders)
             .Include(x => x.Tasks)
             .OrderBy(x => x.Name)
@@ -147,13 +148,65 @@ public class WorkforceService(
             Name = dto.Name.Trim(),
             Code = string.IsNullOrWhiteSpace(dto.Code) ? null : dto.Code.Trim().ToUpperInvariant(),
             Address = dto.Address?.Trim(),
+            City = dto.City?.Trim(),
+            District = dto.District?.Trim(),
+            Description = dto.Description?.Trim(),
+            LogoUrl = dto.LogoUrl?.Trim(),
+            CoverImageUrl = dto.CoverImageUrl?.Trim(),
             ContactEmail = dto.ContactEmail?.Trim().ToLowerInvariant(),
             ContactPhone = dto.ContactPhone?.Trim(),
+            WebsiteUrl = dto.WebsiteUrl?.Trim(),
+            TaxOffice = dto.TaxOffice?.Trim(),
+            TaxNumber = dto.TaxNumber?.Trim(),
+            SocialLinks = dto.SocialLinks?.Trim(),
+            WorkingHours = dto.WorkingHours?.Trim(),
+            Categories = dto.Categories?.Trim(),
+            SearchKeywords = dto.SearchKeywords?.Trim(),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
 
         context.Companies.Add(company);
+        await context.SaveChangesAsync(cancellationToken);
+        return MapCompanySummary(company);
+    }
+
+    public async Task<CompanySummaryDto> UpdateCompanyProfileAsync(int companyId, UpdateCompanyProfileDto dto, CancellationToken cancellationToken = default)
+    {
+        accessControlService.EnsureManagerOrSystemAdmin();
+        if (!currentUserService.IsInRole(RoleConstants.SystemAdmin))
+        {
+            accessControlService.EnsureSameCompany(companyId);
+        }
+
+        var company = await context.Companies
+            .Include(x => x.Users)
+            .Include(x => x.Customers)
+            .Include(x => x.Products).ThenInclude(x => x.Reviews)
+            .Include(x => x.Orders)
+            .Include(x => x.Tasks)
+            .FirstOrDefaultAsync(x => x.Id == companyId, cancellationToken)
+            ?? throw new BusinessRuleException("Firma bulunamadı.");
+
+        company.Name = dto.Name.Trim();
+        company.Code = string.IsNullOrWhiteSpace(dto.Code) ? null : dto.Code.Trim().ToUpperInvariant();
+        company.Address = dto.Address?.Trim();
+        company.City = dto.City?.Trim();
+        company.District = dto.District?.Trim();
+        company.Description = dto.Description?.Trim();
+        company.LogoUrl = dto.LogoUrl?.Trim();
+        company.CoverImageUrl = dto.CoverImageUrl?.Trim();
+        company.ContactEmail = dto.ContactEmail?.Trim().ToLowerInvariant();
+        company.ContactPhone = dto.ContactPhone?.Trim();
+        company.WebsiteUrl = dto.WebsiteUrl?.Trim();
+        company.TaxOffice = dto.TaxOffice?.Trim();
+        company.TaxNumber = dto.TaxNumber?.Trim();
+        company.SocialLinks = dto.SocialLinks?.Trim();
+        company.WorkingHours = dto.WorkingHours?.Trim();
+        company.Categories = dto.Categories?.Trim();
+        company.SearchKeywords = dto.SearchKeywords?.Trim();
+        company.IsActive = currentUserService.IsInRole(RoleConstants.SystemAdmin) ? dto.IsActive : company.IsActive;
+
         await context.SaveChangesAsync(cancellationToken);
         return MapCompanySummary(company);
     }
@@ -341,11 +394,25 @@ public class WorkforceService(
     }
 
     private static CompanySummaryDto MapCompanySummary(Company company)
-        => new()
+    {
+        var reviews = company.Products
+            .SelectMany(x => x.Reviews)
+            .Where(x => x.Status == ReviewStatus.Approved)
+            .ToList();
+
+        return new CompanySummaryDto
         {
             Id = company.Id,
             Name = company.Name,
             Code = company.Code,
+            Description = company.Description,
+            LogoUrl = company.LogoUrl,
+            CoverImageUrl = company.CoverImageUrl,
+            City = company.City,
+            District = company.District,
+            Categories = company.Categories,
+            AverageRating = reviews.Count == 0 ? 0 : Math.Round((decimal)reviews.Average(x => x.Rating), 2),
+            ReviewCount = reviews.Count,
             IsActive = company.IsActive,
             ManagerCount = company.Users.Count(x => x.Role == RoleConstants.Manager),
             EmployeeCount = company.Users.Count(x => x.Role == RoleConstants.Employee),
@@ -354,6 +421,7 @@ public class WorkforceService(
             OpenOrderCount = company.Orders.Count(x => x.Status is OrderStatus.Preparing or OrderStatus.Ready),
             PendingTaskCount = company.Tasks.Count(x => x.Status != TaskState.Completed)
         };
+    }
 
     private static UserInfoDto MapUserInfo(AppUser user)
         => new()
