@@ -74,8 +74,8 @@ public class InvoiceService(
         await orderHistoryService.RecordAsync(
             order.Id,
             OrderHistoryType.InvoiceGenerated,
-            "Fatura olusturuldu",
-            $"{invoiceNumber} numarali dijital fatura olusturuldu ve arsive kaydedildi.",
+            "Fatura oluşturuldu",
+            $"{invoiceNumber} numaralı dijital fatura oluşturuldu ve arsive kaydedildi.",
             nameof(OrderInvoice),
             entity.Id.ToString(CultureInfo.InvariantCulture),
             cancellationToken: cancellationToken);
@@ -127,7 +127,7 @@ public class InvoiceService(
             }
         }
 
-        throw new AuthorizationException("Bu faturaya erisim yetkiniz bulunmuyor.");
+        throw new AuthorizationException("Bu faturaya erişim yetkiniz bulunmuyor.");
     }
 
     private byte[] BuildInvoicePdf(Order order, string invoiceNumber)
@@ -139,14 +139,14 @@ public class InvoiceService(
             new(11, 50, 771, $"Vergi Dairesi: {_company.TaxOffice} | Vergi No: {_company.TaxNumber}"),
             new(18, 400, 805, "DIJITAL FATURA"),
             new(11, 400, 787, $"Fatura No: {invoiceNumber}"),
-            new(11, 400, 771, $"Siparis No: {order.OrderNumber}"),
+            new(11, 400, 771, $"Sipariş No: {order.OrderNumber}"),
             new(11, 400, 755, $"Tarih: {DateTime.UtcNow.ToLocalTime():dd.MM.yyyy HH:mm}"),
             new(13, 50, 725, "MUSTERI BILGILERI"),
             new(11, 50, 707, $"Ad Soyad: {order.Customer.Name}"),
             new(11, 50, 691, $"Telefon: {order.Customer.Phone}"),
             new(11, 50, 675, $"E-Posta: {order.Customer.Email ?? "-"}"),
             new(13, 50, 645, "URUNLER"),
-            new(10, 50, 627, "Urun"),
+            new(10, 50, 627, "Ürün"),
             new(10, 310, 627, "Adet"),
             new(10, 390, 627, "Birim"),
             new(10, 480, 627, "Toplam")
@@ -155,7 +155,7 @@ public class InvoiceService(
         var currentY = 607;
         foreach (var item in order.Items)
         {
-            lines.Add(new PdfTextLine(10, 50, currentY, item.Product?.Name ?? $"Urun #{item.ProductId}"));
+            lines.Add(new PdfTextLine(10, 50, currentY, item.Product?.Name ?? $"Ürün #{item.ProductId}"));
             lines.Add(new PdfTextLine(10, 310, currentY, item.Quantity.ToString(CultureInfo.InvariantCulture)));
             lines.Add(new PdfTextLine(10, 390, currentY, $"{item.UnitPrice:N2} TL"));
             lines.Add(new PdfTextLine(10, 480, currentY, $"{item.TotalPrice:N2} TL"));
@@ -166,13 +166,13 @@ public class InvoiceService(
         lines.AddRange(
         [
             new PdfTextLine(13, 50, currentY - 16, "ODEME OZETI"),
-            new PdfTextLine(11, 50, currentY - 34, $"Odeme Tipi: {method}"),
-            new PdfTextLine(11, 50, currentY - 50, $"Odeme Durumu: {order.PaymentStatus}"),
+            new PdfTextLine(11, 50, currentY - 34, $"Ödeme Tipi: {method}"),
+            new PdfTextLine(11, 50, currentY - 50, $"Ödeme Durumu: {order.PaymentStatus}"),
             new PdfTextLine(11, 50, currentY - 66, $"Odenen: {order.PaidAmount:N2} TL"),
             new PdfTextLine(11, 50, currentY - 82, $"Kalan: {Math.Max(order.TotalAmount - order.PaidAmount, 0m):N2} TL"),
             new PdfTextLine(13, 400, currentY - 34, "GENEL TOPLAM"),
             new PdfTextLine(16, 400, currentY - 58, $"{order.TotalAmount:N2} TL"),
-            new PdfTextLine(10, 50, 80, "Bu belge sistem tarafindan otomatik olusturulmustur.")
+            new PdfTextLine(10, 50, 80, "Bu belge sistem tarafından otomatik oluşturulmuştur.")
         ]);
 
         return SimplePdfBuilder.Build(lines);

@@ -15,8 +15,8 @@ public class MarketController(IMarketDataService marketDataService) : Controller
     public async Task<IActionResult> Public(string baseCurrency = "TRY", CancellationToken cancellationToken = default)
     {
         var model = await BuildPageModelAsync(
-            title: "Canli Piyasalar",
-            description: "Altin, doviz, metaller ve emtia akislarini herkes icin acik market panelinde takip edin.",
+            title: "Canlı Piyasalar",
+            description: "Altin, döviz, metaller ve emtia akışlarını herkes için açık market panelinde takip edin.",
             isAdmin: false,
             baseCurrency,
             cancellationToken);
@@ -29,8 +29,8 @@ public class MarketController(IMarketDataService marketDataService) : Controller
     public async Task<IActionResult> Customer(string baseCurrency = "TRY", CancellationToken cancellationToken = default)
     {
         var model = await BuildPageModelAsync(
-            title: "Canli Piyasalar",
-            description: "Altin, doviz, metaller ve emtia akislarini premium market panelinde takip edin.",
+            title: "Canlı Piyasalar",
+            description: "Altin, döviz, metaller ve emtia akışlarını premium market panelinde takip edin.",
             isAdmin: false,
             baseCurrency,
             cancellationToken);
@@ -45,7 +45,7 @@ public class MarketController(IMarketDataService marketDataService) : Controller
     {
         var model = await BuildPageModelAsync(
             title: "Market Control Center",
-            description: "Canli piyasa akislarini, provider sagligini ve veri kaynaklarini tek panelden yonetin.",
+            description: "Canlı piyasa akışlarını, provider sağlığını ve veri kaynaklarını tek panelden yönetin.",
             isAdmin: true,
             baseCurrency,
             cancellationToken);
@@ -99,7 +99,7 @@ public class MarketController(IMarketDataService marketDataService) : Controller
     public async Task<IActionResult> UpdateProvider(UpdateMarketProviderDto request, CancellationToken cancellationToken = default)
     {
         await marketDataService.UpdateProviderAsync(request, cancellationToken);
-        TempData["Success"] = "Market provider ayarlari guncellendi.";
+        TempData["Success"] = "Market provider ayarlari güncellendi.";
         return Redirect(AdminMarketPath);
     }
 

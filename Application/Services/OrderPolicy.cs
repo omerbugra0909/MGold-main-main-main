@@ -19,45 +19,45 @@ public static class OrderPolicy
 
         if (dto.InstallmentCount < 1 || dto.InstallmentCount > 36)
         {
-            throw new BusinessRuleException("Taksit sayisi 1 ile 36 arasinda olmalidir.");
+            throw new BusinessRuleException("Taksit sayisi 1 ile 36 arasinda olmalıdir.");
         }
 
         if (dto.Method is PaymentMethod.Card or PaymentMethod.CreditCard or PaymentMethod.DebitCard
             && dto.Status is PaymentStatus.Paid or PaymentStatus.PartiallyPaid
             && string.IsNullOrWhiteSpace(dto.ReferenceNumber))
         {
-            throw new BusinessRuleException("Kart odemelerinde provizyon veya islem referansi girilmelidir.");
+            throw new BusinessRuleException("Kart ödemelerinde provizyon veya işlem referansi girilmelidir.");
         }
 
         if (dto.Method == PaymentMethod.DebitCard && dto.InstallmentCount > 1)
         {
-            throw new BusinessRuleException("Banka karti odemelerinde taksit kullanilamaz.");
+            throw new BusinessRuleException("Banka kartı ödemelerinde taksit kullanılamaz.");
         }
 
         if (dto.Status == PaymentStatus.Failed
             && string.IsNullOrWhiteSpace(dto.FailureCode)
             && string.IsNullOrWhiteSpace(dto.FailureMessage))
         {
-            throw new BusinessRuleException("Basarisiz odeme kayitlarinda hata kodu veya mesaji bulunmalidir.");
+            throw new BusinessRuleException("Basarisiz ödeme kayıtlarinda hata kodu veya mesaji bulunmalidir.");
         }
 
         var providerKey = NormalizeProviderKey(dto.ProviderKey);
         var isProviderPayment = providerKey != ManualPaymentProvider.Key;
         if (isProviderPayment && string.IsNullOrWhiteSpace(dto.IdempotencyKey))
         {
-            throw new BusinessRuleException("Saglayici odemelerinde idempotency anahtari zorunludur.");
+            throw new BusinessRuleException("Saglayici ödemelerinde idempotency anahtari zorunludur.");
         }
 
         if (isProviderPayment
             && dto.Status is PaymentStatus.Paid or PaymentStatus.PartiallyPaid or PaymentStatus.Authorized
             && string.IsNullOrWhiteSpace(dto.ProviderTransactionId))
         {
-            throw new BusinessRuleException("Saglayici odemelerinde provider transaction id zorunludur.");
+            throw new BusinessRuleException("Saglayici ödemelerinde provider transaction id zorunludur.");
         }
 
         if (dto.IsRefund && !dto.ParentPaymentId.HasValue)
         {
-            throw new BusinessRuleException("Iade kayitlarinda ana odeme secilmelidir.");
+            throw new BusinessRuleException("İade kayıtlarinda ana ödeme secilmelidir.");
         }
     }
 
@@ -71,18 +71,18 @@ public static class OrderPolicy
 
         if (!dto.ParentPaymentId.HasValue)
         {
-            throw new BusinessRuleException("Iade kayitlarinda ana odeme secilmelidir.");
+            throw new BusinessRuleException("İade kayıtlarinda ana ödeme secilmelidir.");
         }
 
         var parent = order.Payments.FirstOrDefault(x => x.Id == dto.ParentPaymentId.Value);
         if (parent is null)
         {
-            throw new BusinessRuleException("Iade edilecek ana odeme bu siparise ait degil.");
+            throw new BusinessRuleException("İade edilecek ana ödeme bu siparişe ait değil.");
         }
 
         if (parent.Status is not (PaymentStatus.Paid or PaymentStatus.PartiallyPaid))
         {
-            throw new BusinessRuleException("Yalnizca tahsil edilmis odemeler iade edilebilir.");
+            throw new BusinessRuleException("Yalnızca tahsil edilmis ödemeler iade edilebilir.");
         }
 
         var alreadyRefunded = order.Payments
@@ -90,7 +90,7 @@ public static class OrderPolicy
             .Sum(x => x.Amount);
         if (alreadyRefunded + dto.Amount > parent.Amount)
         {
-            throw new BusinessRuleException("Iade tutari ana odemenin kalan tutarini asamaz.");
+            throw new BusinessRuleException("İade tutari ana ödemenin kalan tutarini aşamaz.");
         }
     }
 

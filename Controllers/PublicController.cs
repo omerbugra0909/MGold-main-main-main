@@ -83,13 +83,13 @@ public class PublicController(
         {
             if (currentUserService.IsInRole(RoleConstants.SystemAdmin))
             {
-                TempData["Error"] = "Sistem admini urun eklerken firma baglami secmelidir. Urunler global olamaz.";
+                TempData["Error"] = "Sistem admini ürün eklerken firma bağlami secmelidir. Ürünler global olamaz.";
                 return RedirectToAction(nameof(Index));
             }
 
             if (!currentUserService.CompanyId.HasValue)
             {
-                TempData["Error"] = "Urun eklemek icin firma baglami zorunludur.";
+                TempData["Error"] = "Ürün eklemek için firma bağlami zorunludur.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -99,12 +99,12 @@ public class PublicController(
             await context.Products.AddAsync(entity, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
-            TempData["Success"] = $"Urun eklendi: {entity.Name}";
+            TempData["Success"] = $"Ürün eklendi: {entity.Name}";
             return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)
         {
-            ViewData["LoadError"] = GetFriendlyMessage(ex, "Urun eklenemedi.");
+            ViewData["LoadError"] = GetFriendlyMessage(ex, "Ürün eklenemedi.");
             return View("Index", await BuildPageModelAsync(cancellationToken, createFormOverride: form));
         }
     }
@@ -127,25 +127,25 @@ public class PublicController(
             var entity = await context.Products.FirstOrDefaultAsync(x => x.Id == form.Id, cancellationToken);
             if (entity is null)
             {
-                TempData["Error"] = "Guncellenecek urun bulunamadi.";
+                TempData["Error"] = "Güncellenecek ürün bulunamadı.";
                 return RedirectToAction(nameof(Index));
             }
 
             if (!currentUserService.IsInRole(RoleConstants.SystemAdmin) && entity.CompanyId != currentUserService.CompanyId)
             {
-                TempData["Error"] = "Bu urunu guncelleme yetkiniz yok.";
+                TempData["Error"] = "Bu ürünu güncelleme yetkiniz yok.";
                 return RedirectToAction(nameof(Index));
             }
 
             MapToExistingEntity(entity, form);
             await context.SaveChangesAsync(cancellationToken);
 
-            TempData["Success"] = $"Urun guncellendi: {entity.Name}";
+            TempData["Success"] = $"Ürün güncellendi: {entity.Name}";
             return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)
         {
-            ViewData["LoadError"] = GetFriendlyMessage(ex, "Urun guncellenemedi.");
+            ViewData["LoadError"] = GetFriendlyMessage(ex, "Ürün güncellenemedi.");
             return View("Index", await BuildPageModelAsync(cancellationToken, editFormOverride: form, openEditPanel: true));
         }
     }
@@ -164,20 +164,20 @@ public class PublicController(
     {
         if (quantity <= 0)
         {
-            TempData["Error"] = "Siparis miktari en az 1 olmalidir.";
+            TempData["Error"] = "Sipariş miktari en az 1 olmalıdir.";
             return RedirectToLocal(returnUrl);
         }
 
         if (!Enum.IsDefined(preferredPaymentMethod))
         {
-            TempData["Error"] = "Gecerli bir odeme tercihi seciniz.";
+            TempData["Error"] = "Geçerli bir ödeme tercihi seciniz.";
             return RedirectToLocal(returnUrl);
         }
 
         var userId = currentUserService.UserId;
         if (!userId.HasValue)
         {
-            TempData["Error"] = "Urun siparisi icin giris yapmaniz gerekmektedir.";
+            TempData["Error"] = "Ürün siparişi için giriş yapmaniz gerekmektedir.";
             return RedirectToLocal(returnUrl);
         }
 
@@ -187,7 +187,7 @@ public class PublicController(
 
         if (user?.CustomerId is null)
         {
-            TempData["Error"] = "Siparis vermek icin once hesap bilgilerinizi tamamlayin.";
+            TempData["Error"] = "Sipariş vermek için önce hesap bilgilerinizi tamamlayın.";
             return RedirectToLocal(returnUrl);
         }
 
@@ -196,7 +196,7 @@ public class PublicController(
         var product = await context.Products.FirstOrDefaultAsync(x => x.Id == productId, cancellationToken);
         if (product is null)
         {
-            TempData["Error"] = "Siparis verilecek urun bulunamadi.";
+            TempData["Error"] = "Sipariş verilecek ürün bulunamadı.";
             return RedirectToLocal(returnUrl);
         }
 
@@ -213,7 +213,7 @@ public class PublicController(
             OrderNumber = CreateOrderNumber(),
             CompanyId = product.CompanyId,
             Status = OrderStatus.Preparing,
-            Notes = string.IsNullOrWhiteSpace(notes) ? $"Web siparisi: {product.Name}" : notes.Trim(),
+            Notes = string.IsNullOrWhiteSpace(notes) ? $"Web siparişi: {product.Name}" : notes.Trim(),
             PreferredPaymentMethod = preferredPaymentMethod,
             PaymentStatus = PaymentStatus.Pending,
             CreatedAt = DateTime.UtcNow,
@@ -227,7 +227,7 @@ public class PublicController(
                     Quantity = quantity,
                     UnitPrice = product.SalePrice,
                     TotalPrice = totalAmount,
-                    Notes = "Dashboard urun siparisi"
+                    Notes = "Dashboard ürün siparişi"
                 }
             }
         };
@@ -238,8 +238,8 @@ public class PublicController(
 
         await context.Notifications.AddAsync(new Notification
         {
-            Title = "Yeni urun siparisi",
-            Message = $"{user.FullName} tarafindan {product.Name} icin siparis olusturuldu.",
+            Title = "Yeni ürün siparişi",
+            Message = $"{user.FullName} tarafından {product.Name} için sipariş oluşturuldu.",
             Type = NotificationType.Info,
             TargetRole = RoleConstants.ManagerOnly,
             RelatedEntityName = nameof(Order),
@@ -250,19 +250,19 @@ public class PublicController(
         await context.SaveChangesAsync(cancellationToken);
         await dbTransaction.CommitAsync(cancellationToken);
         await NotifyAdminAsync(
-            subject: $"Yeni siparis alindi: {order.OrderNumber}",
+            subject: $"Yeni sipariş alındı: {order.OrderNumber}",
             htmlBody: $"""
-                <h2>Yeni siparis bildirimi</h2>
-                <p><strong>Siparis No:</strong> {order.OrderNumber}</p>
-                <p><strong>Kullanici:</strong> {user.FullName} ({user.Email})</p>
-                <p><strong>Urun:</strong> {product.Name}</p>
+                <h2>Yeni sipariş bildirimi</h2>
+                <p><strong>Sipariş No:</strong> {order.OrderNumber}</p>
+                <p><strong>Kullanıcı:</strong> {user.FullName} ({user.Email})</p>
+                <p><strong>Ürün:</strong> {product.Name}</p>
                 <p><strong>Miktar:</strong> {quantity}</p>
                 <p><strong>Toplam:</strong> {totalAmount:N2} TL</p>
-                <p><strong>Odeme Tercihi:</strong> {preferredPaymentMethod}</p>
+                <p><strong>Ödeme Tercihi:</strong> {preferredPaymentMethod}</p>
                 <p><strong>Not:</strong> {order.Notes}</p>
             """,
             cancellationToken);
-        TempData["Success"] = $"Siparisiniz alindi: {product.Name}";
+        TempData["Success"] = $"Siparişiniz alındı: {product.Name}";
         return RedirectToLocal(returnUrl);
     }
 
@@ -276,13 +276,13 @@ public class PublicController(
             var entity = await context.Products.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
             if (entity is null)
             {
-                TempData["Error"] = "Silinecek urun bulunamadi.";
+                TempData["Error"] = "Silinecek ürün bulunamadı.";
                 return RedirectToAction(nameof(Index));
             }
 
             if (!currentUserService.IsInRole(RoleConstants.SystemAdmin) && entity.CompanyId != currentUserService.CompanyId)
             {
-                TempData["Error"] = "Bu urunu silme yetkiniz yok.";
+                TempData["Error"] = "Bu ürünu silme yetkiniz yok.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -290,19 +290,19 @@ public class PublicController(
             var hasTransactions = await context.Transactions.AnyAsync(x => x.ProductId == id, cancellationToken);
             if (hasOrders || hasTransactions)
             {
-                TempData["Error"] = "Siparis veya islem gecmisi olan urun silinemez.";
+                TempData["Error"] = "Sipariş veya işlem geçmişi olan ürün silinemez.";
                 return RedirectToAction(nameof(Index));
             }
 
             context.Products.Remove(entity);
             await context.SaveChangesAsync(cancellationToken);
 
-            TempData["Success"] = $"Urun silindi: {entity.Name}";
+            TempData["Success"] = $"Ürün silindi: {entity.Name}";
             return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)
         {
-            TempData["Error"] = GetFriendlyMessage(ex, "Urun silinemedi.");
+            TempData["Error"] = GetFriendlyMessage(ex, "Ürün silinemedi.");
             return RedirectToAction(nameof(Index));
         }
     }
@@ -656,7 +656,7 @@ public class PublicController(
     {
         if (string.IsNullOrWhiteSpace(form.Name))
         {
-            ModelState.AddModelError($"{nameof(PublicProductsPageViewModel.CreateForm)}.{nameof(PublicProductForm.Name)}", "Urun adi zorunludur.");
+            ModelState.AddModelError($"{nameof(PublicProductsPageViewModel.CreateForm)}.{nameof(PublicProductForm.Name)}", "Ürün adi zorunludur.");
         }
     }
 
@@ -664,12 +664,12 @@ public class PublicController(
     {
         if (form.Id <= 0)
         {
-            ModelState.AddModelError($"{nameof(PublicProductsPageViewModel.EditForm)}.{nameof(PublicProductEditForm.Id)}", "Gecerli urun secilmelidir.");
+            ModelState.AddModelError($"{nameof(PublicProductsPageViewModel.EditForm)}.{nameof(PublicProductEditForm.Id)}", "Geçerli ürün secilmelidir.");
         }
 
         if (string.IsNullOrWhiteSpace(form.Name))
         {
-            ModelState.AddModelError($"{nameof(PublicProductsPageViewModel.EditForm)}.{nameof(PublicProductEditForm.Name)}", "Urun adi zorunludur.");
+            ModelState.AddModelError($"{nameof(PublicProductsPageViewModel.EditForm)}.{nameof(PublicProductEditForm.Name)}", "Ürün adi zorunludur.");
         }
     }
 
@@ -726,7 +726,7 @@ public class PublicProductForm
 {
     [System.ComponentModel.DataAnnotations.Required]
     [System.ComponentModel.DataAnnotations.MaxLength(120)]
-    [System.ComponentModel.DataAnnotations.RegularExpression(@".*\S.*", ErrorMessage = "Urun adi zorunludur.")]
+    [System.ComponentModel.DataAnnotations.RegularExpression(@".*\S.*", ErrorMessage = "Ürün adi zorunludur.")]
     public string Name { get; set; } = string.Empty;
 
     public ProductType Type { get; set; } = ProductType.Gold;

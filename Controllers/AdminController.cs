@@ -129,7 +129,7 @@ public class AdminController(
             RecentActivities = recentAuditLogs.Select(x => new AdminRecentActivityItem
             {
                 Title = $"{x.ActionType} / {x.EntityName}",
-                Description = string.IsNullOrWhiteSpace(x.Path) ? (x.AfterState ?? "Sistem islemi") : x.Path,
+                Description = string.IsNullOrWhiteSpace(x.Path) ? (x.AfterState ?? "Sistem işlemi") : x.Path,
                 Username = x.Username ?? "system",
                 CreatedAt = x.Timestamp,
                 IsSuccess = x.IsSuccess
@@ -393,18 +393,18 @@ public class AdminController(
         await orderHistoryService.RecordAsync(
             id,
             OrderHistoryType.AdminAction,
-            "Admin siparis durumu guncelledi",
-            $"{updatedOrder.OrderNumber} icin panel uzerinden yeni durum {status} olarak kaydedildi.",
+            "Admin sipariş durumu güncelledi",
+            $"{updatedOrder.OrderNumber} için panel üzerinden yeni durum {status} olarak kaydedildi.",
             cancellationToken: cancellationToken);
 
         await NotifyAdminAsync(
-            subject: $"Siparis durumu guncellendi: {updatedOrder.OrderNumber}",
+            subject: $"Sipariş durumu güncellendi: {updatedOrder.OrderNumber}",
             htmlBody: $"""
-                <h2>Siparis durum degisikligi</h2>
-                <p><strong>Siparis No:</strong> {updatedOrder.OrderNumber}</p>
-                <p><strong>Musteri:</strong> {updatedOrder.CustomerName}</p>
+                <h2>Sipariş durum degisikligi</h2>
+                <p><strong>Sipariş No:</strong> {updatedOrder.OrderNumber}</p>
+                <p><strong>Müşteri:</strong> {updatedOrder.CustomerName}</p>
                 <p><strong>Yeni Durum:</strong> {updatedOrder.Status}</p>
-                <p><strong>Guncellenme:</strong> {updatedOrder.UpdatedAt.ToLocalTime():dd.MM.yyyy HH:mm}</p>
+                <p><strong>Güncellenme:</strong> {updatedOrder.UpdatedAt.ToLocalTime():dd.MM.yyyy HH:mm}</p>
             """,
             cancellationToken);
 
@@ -419,7 +419,7 @@ public class AdminController(
     {
         if (!ModelState.IsValid)
         {
-            TempData["Error"] = "Odeme bilgilerini kontrol edin.";
+            TempData["Error"] = "Ödeme bilgilerini kontrol edin.";
             return RedirectToPanel($"orders/{id}");
         }
 
@@ -446,11 +446,11 @@ public class AdminController(
         await orderHistoryService.RecordAsync(
             id,
             OrderHistoryType.AdminAction,
-            "Admin odeme ekledi",
-            $"{form.Amount:N2} TL tutarindaki odeme admin panelinden kaydedildi.",
+            "Admin ödeme ekledi",
+            $"{form.Amount:N2} TL tutarındaki ödeme admin panelinden kaydedildi.",
             cancellationToken: cancellationToken);
 
-        TempData["Success"] = $"{updatedOrder.OrderNumber} icin odeme kaydi eklendi.";
+        TempData["Success"] = $"{updatedOrder.OrderNumber} için ödeme kaydı eklendi.";
         return RedirectToPanel($"orders/{id}");
     }
 
@@ -463,11 +463,11 @@ public class AdminController(
         await orderHistoryService.RecordAsync(
             id,
             OrderHistoryType.AdminAction,
-            "Admin fatura olusturdu",
-            $"{invoice.InvoiceNumber} numarali fatura admin panelinden olusturuldu.",
+            "Admin fatura oluşturdu",
+            $"{invoice.InvoiceNumber} numaralı fatura admin panelinden oluşturuldu.",
             cancellationToken: cancellationToken);
 
-        TempData["Success"] = $"Fatura hazir: {invoice.InvoiceNumber}";
+        TempData["Success"] = $"Fatura hazır: {invoice.InvoiceNumber}";
         return RedirectToPanel($"orders/{id}");
     }
 
@@ -486,13 +486,13 @@ public class AdminController(
                 .FirstOrDefaultAsync(cancellationToken);
             if (!currentUserService.IsInRole(RoleConstants.SystemAdmin) && productCompanyId != currentUserService.CompanyId)
             {
-                TempData["Error"] = "Bu yorumu guncelleme yetkiniz yok.";
+                TempData["Error"] = "Bu yorumu güncelleme yetkiniz yok.";
                 return RedirectToPanel("reviews");
             }
 
             if (!Enum.IsDefined(status))
             {
-                TempData["Error"] = "Gecersiz yorum durumu.";
+                TempData["Error"] = "Geçersiz yorum durumu.";
                 return RedirectToPanel("reviews");
             }
 
@@ -515,7 +515,7 @@ public class AdminController(
         {
             if (!await CanAccessNotificationAsync(notification, cancellationToken))
             {
-                TempData["Error"] = "Bu bildirimi guncelleme yetkiniz yok.";
+                TempData["Error"] = "Bu bildirimi güncelleme yetkiniz yok.";
                 return RedirectToPanel("notifications");
             }
 
@@ -539,26 +539,26 @@ public class AdminController(
 
         if (!currentUserService.IsInRole(RoleConstants.SystemAdmin) && user.CompanyId != currentUserService.CompanyId)
         {
-            TempData["Error"] = "Bu kullaniciyi guncelleme yetkiniz yok.";
+            TempData["Error"] = "Bu kullanıcıyi güncelleme yetkiniz yok.";
             return RedirectToPanel("users");
         }
 
         if (!currentUserService.IsInRole(RoleConstants.SystemAdmin)
             && string.Equals(role, RoleConstants.SystemAdmin, StringComparison.Ordinal))
         {
-            TempData["Error"] = "Sistem admin rolu yalnizca sistem admini tarafindan atanabilir.";
+            TempData["Error"] = "Sistem admin rolu yalnızca sistem admini tarafından atanabilir.";
             return RedirectToPanel("users");
         }
 
         if (string.Equals(User.Identity?.Name, user.Username, StringComparison.OrdinalIgnoreCase) && !isActive)
         {
-            TempData["Error"] = "Kendi admin hesabinizi pasife alamazsiniz.";
+            TempData["Error"] = "Kendi admin hesabınızı pasife alamazsiniz.";
             return RedirectToPanel("users");
         }
 
         if (!RoleConstants.All.Contains(role))
         {
-            TempData["Error"] = "Gecersiz rol secimi.";
+            TempData["Error"] = "Geçersiz rol secimi.";
             return RedirectToPanel("users");
         }
 
@@ -566,15 +566,15 @@ public class AdminController(
         user.IsActive = isActive;
         await context.SaveChangesAsync(cancellationToken);
         await NotifyAdminAsync(
-            subject: $"Kullanici hesabi guncellendi: {user.Username}",
+            subject: $"Kullanıcı hesabı güncellendi: {user.Username}",
             htmlBody: $"""
                 <h2>Onemli sistem bildirimi</h2>
-                <p><strong>Kullanici:</strong> {user.FullName} ({user.Username})</p>
+                <p><strong>Kullanıcı:</strong> {user.FullName} ({user.Username})</p>
                 <p><strong>Yeni Rol:</strong> {user.Role}</p>
                 <p><strong>Durum:</strong> {(user.IsActive ? "Aktif" : "Pasif")}</p>
             """,
             cancellationToken);
-        TempData["Success"] = $"Kullanici guncellendi: {user.Username}";
+        TempData["Success"] = $"Kullanıcı güncellendi: {user.Username}";
         return RedirectToPanel("users");
     }
 
@@ -585,7 +585,7 @@ public class AdminController(
     {
         if (!ModelState.IsValid)
         {
-            TempData["Error"] = "Urun bilgilerini kontrol edin.";
+            TempData["Error"] = "Ürün bilgilerini kontrol edin.";
             return RedirectToPanel("products");
         }
 
@@ -594,7 +594,7 @@ public class AdminController(
         {
             if (!form.CompanyId.HasValue)
             {
-                TempData["Error"] = "Sistem admini urun eklerken firma secmelidir. Urunler global olamaz.";
+                TempData["Error"] = "Sistem admini ürün eklerken firma secmelidir. Ürünler global olamaz.";
                 return RedirectToPanel("products");
             }
 
@@ -602,7 +602,7 @@ public class AdminController(
                 .AnyAsync(x => x.Id == form.CompanyId.Value && x.IsActive, cancellationToken);
             if (!companyExists)
             {
-                TempData["Error"] = "Secilen firma bulunamadi veya pasif.";
+                TempData["Error"] = "Secilen firma bulunamadı veya pasif.";
                 return RedirectToPanel("products");
             }
 
@@ -611,7 +611,7 @@ public class AdminController(
 
         if (!productCompanyId.HasValue)
         {
-            TempData["Error"] = "Urun eklemek icin firma baglami zorunludur.";
+            TempData["Error"] = "Ürün eklemek için firma bağlami zorunludur.";
             return RedirectToPanel("products");
         }
 
@@ -633,7 +633,7 @@ public class AdminController(
         }, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
-        TempData["Success"] = $"Urun eklendi: {form.Name}";
+        TempData["Success"] = $"Ürün eklendi: {form.Name}";
         return RedirectToPanel("products");
     }
 
@@ -644,20 +644,20 @@ public class AdminController(
     {
         if (form.Id <= 0)
         {
-            TempData["Error"] = "Gecerli urun secilmelidir.";
+            TempData["Error"] = "Geçerli ürün secilmelidir.";
             return RedirectToPanel("products");
         }
 
         var product = await context.Products.FirstOrDefaultAsync(x => x.Id == form.Id, cancellationToken);
         if (product is null)
         {
-            TempData["Error"] = "Urun bulunamadi.";
+            TempData["Error"] = "Ürün bulunamadı.";
             return RedirectToPanel("products");
         }
 
         if (!currentUserService.IsInRole(RoleConstants.SystemAdmin) && product.CompanyId != currentUserService.CompanyId)
         {
-            TempData["Error"] = "Bu urunu guncelleme yetkiniz yok.";
+            TempData["Error"] = "Bu ürünu güncelleme yetkiniz yok.";
             return RedirectToPanel("products");
         }
 
@@ -674,7 +674,7 @@ public class AdminController(
         product.StockQuantity = form.StockQuantity;
 
         await context.SaveChangesAsync(cancellationToken);
-        TempData["Success"] = $"Urun guncellendi: {product.Name}";
+        TempData["Success"] = $"Ürün güncellendi: {product.Name}";
         return RedirectToPanel("products");
     }
 
@@ -686,13 +686,13 @@ public class AdminController(
         var product = await context.Products.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (product is null)
         {
-            TempData["Error"] = "Silinecek urun bulunamadi.";
+            TempData["Error"] = "Silinecek ürün bulunamadı.";
             return RedirectToPanel("products");
         }
 
         if (!currentUserService.IsInRole(RoleConstants.SystemAdmin) && product.CompanyId != currentUserService.CompanyId)
         {
-            TempData["Error"] = "Bu urunu silme yetkiniz yok.";
+            TempData["Error"] = "Bu ürünu silme yetkiniz yok.";
             return RedirectToPanel("products");
         }
 
@@ -700,13 +700,13 @@ public class AdminController(
         var hasTransactions = await context.Transactions.AnyAsync(x => x.ProductId == id, cancellationToken);
         if (hasOrders || hasTransactions)
         {
-            TempData["Error"] = "Siparis veya islem gecmisi olan urun silinemez.";
+            TempData["Error"] = "Sipariş veya işlem geçmişi olan ürün silinemez.";
             return RedirectToPanel("products");
         }
 
         context.Products.Remove(product);
         await context.SaveChangesAsync(cancellationToken);
-        TempData["Success"] = $"Urun silindi: {product.Name}";
+        TempData["Success"] = $"Ürün silindi: {product.Name}";
         return RedirectToPanel("products");
     }
 

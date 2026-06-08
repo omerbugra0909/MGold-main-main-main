@@ -19,7 +19,7 @@ public class MarketDataValidator(ILogger<MarketDataValidator> logger) : IMarketD
 
         if (quote.PriceInUsd <= 0)
         {
-            warnings.Add("price pozitif degil");
+            warnings.Add("price pozitif değil");
         }
 
         var high = quote.High24hInUsd ?? quote.PriceInUsd;
@@ -27,25 +27,25 @@ public class MarketDataValidator(ILogger<MarketDataValidator> logger) : IMarketD
 
         if (quote.PriceInUsd > 0 && high < quote.PriceInUsd)
         {
-            warnings.Add("24s yuksek guncel fiyat altinda kaldigi icin duzeltildi");
+            warnings.Add("24s yüksek güncel fiyat altında kaldigi için düzeltildi");
             high = quote.PriceInUsd;
         }
 
         if (quote.PriceInUsd > 0 && low > quote.PriceInUsd)
         {
-            warnings.Add("24s dusuk guncel fiyat ustunde kaldigi icin duzeltildi");
+            warnings.Add("24s düşük güncel fiyat üstünde kaldigi için düzeltildi");
             low = quote.PriceInUsd;
         }
 
         if (high < low)
         {
-            warnings.Add("24s yuksek/dusuk araligi ters geldigi icin duzeltildi");
+            warnings.Add("24s yüksek/düşük aralığı ters geldiği için düzeltildi");
             (high, low) = (low, high);
         }
 
         if (payload.FetchedAt <= DateTime.UnixEpoch || payload.FetchedAt > DateTime.UtcNow.AddMinutes(5))
         {
-            warnings.Add("timestamp gecersiz veya gelecekte");
+            warnings.Add("timestamp geçersiz veya gelecekte");
         }
 
         if (string.IsNullOrWhiteSpace(payload.ProviderDisplayName) && string.IsNullOrWhiteSpace(quote.Note))
@@ -94,24 +94,24 @@ public class MarketDataValidator(ILogger<MarketDataValidator> logger) : IMarketD
 
         if (quote.Price <= 0)
         {
-            warnings.Add("price pozitif degil");
+            warnings.Add("price pozitif değil");
         }
 
         if (quote.High24h < quote.Price)
         {
-            warnings.Add("24s yuksek guncel fiyata gore duzeltildi");
+            warnings.Add("24s yüksek güncel fiyata göre düzeltildi");
             quote.High24h = quote.Price;
         }
 
         if (quote.Low24h > quote.Price)
         {
-            warnings.Add("24s dusuk guncel fiyata gore duzeltildi");
+            warnings.Add("24s düşük güncel fiyata göre düzeltildi");
             quote.Low24h = quote.Price;
         }
 
         if (quote.High24h < quote.Low24h)
         {
-            warnings.Add("24s yuksek/dusuk araligi ters geldigi icin duzeltildi");
+            warnings.Add("24s yüksek/düşük aralığı ters geldiği için düzeltildi");
             (quote.High24h, quote.Low24h) = (quote.Low24h, quote.High24h);
         }
 
@@ -124,7 +124,7 @@ public class MarketDataValidator(ILogger<MarketDataValidator> logger) : IMarketD
 
         if (quote.LastUpdatedAt <= DateTime.UnixEpoch || quote.LastUpdatedAt > DateTime.UtcNow.AddMinutes(5))
         {
-            warnings.Add("timestamp gecersiz veya gelecekte");
+            warnings.Add("timestamp geçersiz veya gelecekte");
         }
 
         if (string.IsNullOrWhiteSpace(quote.ProviderDisplayName) && string.IsNullOrWhiteSpace(quote.Note))

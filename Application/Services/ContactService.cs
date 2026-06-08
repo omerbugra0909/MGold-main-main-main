@@ -57,14 +57,14 @@ public class ContactService(
             await smsService.SendAsync(new SendSmsRequestDto
             {
                 ToPhone = _smsSettings.SupportPhone,
-                Message = $"Yeni iletisim mesaji: {entity.Name} - {entity.Subject}"
+                Message = $"Yeni iletişim mesaji: {entity.Name} - {entity.Subject}"
             }, cancellationToken);
         }
 
         await smsService.SendAsync(new SendSmsRequestDto
         {
             ToPhone = entity.Phone,
-            Message = $"MGold iletisim talebiniz alindi. Konu: {entity.Subject}"
+            Message = $"MGold iletişim talebiniz alındı. Konu: {entity.Subject}"
         }, cancellationToken);
 
         return entity.ToDto();

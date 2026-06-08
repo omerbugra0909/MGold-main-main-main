@@ -27,7 +27,7 @@ public class WorkforceController(
     public async Task<IActionResult> ManagerDashboard(CancellationToken cancellationToken)
     {
         ViewData["Title"] = "Firma Operasyon Merkezi";
-        ViewData["PageDescription"] = "Siparis yogunlugu, performans ve gorev dagilimi firma bazinda izlenir.";
+        ViewData["PageDescription"] = "Sipariş yoğunluğu, performans ve görev dagilimi firma bazinda izlenir.";
         return View("ManagerDashboard", await workforceService.GetCompanyDashboardAsync(cancellationToken));
     }
 
@@ -36,8 +36,8 @@ public class WorkforceController(
     [HttpGet("tasks")]
     public async Task<IActionResult> MyTasks(CancellationToken cancellationToken)
     {
-        ViewData["Title"] = "Calisma Alani";
-        ViewData["PageDescription"] = "Gorevleriniz, siparis akisiniz ve durum guncellemeleriniz burada yer alir.";
+        ViewData["Title"] = "Çalışma Alanı";
+        ViewData["PageDescription"] = "Görevleriniz, sipariş akışınız ve durum güncellemeleriniz burada yer alir.";
         return View("EmployeeWorkspace", await workforceService.GetEmployeeWorkspaceAsync(cancellationToken));
     }
 
@@ -50,12 +50,12 @@ public class WorkforceController(
     {
         if (!ModelState.IsValid)
         {
-            TempData["Error"] = "Gorev bilgilerini kontrol edin.";
+            TempData["Error"] = "Görev bilgilerini kontrol edin.";
             return Redirect(OperationsPath);
         }
 
         await workforceService.AssignTaskAsync(dto, cancellationToken);
-        TempData["Success"] = "Gorev atandi.";
+        TempData["Success"] = "Görev atandi.";
         return Redirect(OperationsPath);
     }
 
@@ -72,7 +72,7 @@ public class WorkforceController(
         }
 
         await workforceService.UpdateTaskStatusAsync(taskId, dto, cancellationToken);
-        TempData["Success"] = "Gorev durumu guncellendi.";
+        TempData["Success"] = "Görev durumu güncellendi.";
         return RedirectToAction(nameof(MyTasks));
     }
 }

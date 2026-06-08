@@ -77,13 +77,13 @@ public class LiveMarketApiProvider(
 
         if (yahooTask.Result.Count == 0 && tcmbTask.Result.Count == 0 && localGoldTask.Result.Count == 0)
         {
-            throw new InvalidOperationException("Canli piyasa endpointlerinden gecerli veri alinamadi.");
+            throw new InvalidOperationException("Canlı piyasa endpointlerinden geçerli veri alınamadı.");
         }
 
         var quotes = BuildQuotes(yahooTask.Result, tcmbTask.Result, localGoldTask.Result);
         if (quotes.Count == 0)
         {
-            throw new InvalidOperationException("Canli piyasa endpointlerinden gecerli veri alinamadi.");
+            throw new InvalidOperationException("Canlı piyasa endpointlerinden geçerli veri alınamadı.");
         }
 
         var usesLocalGold = localGoldTask.Result.Count > 0
@@ -95,8 +95,8 @@ public class LiveMarketApiProvider(
             ProviderDisplayName = usesLocalGold ? "Yerel Altin + Yahoo Finance + TCMB" : "Yahoo Finance + TCMB",
             IsFallback = false,
             Note = usesLocalGold
-                ? "Turkiye altin alis/satis referansi, TCMB doviz ve Yahoo piyasa akisi"
-                : "Gercek zamanli piyasa akisi",
+                ? "Turkiye altin alis/satış referansi, TCMB döviz ve Yahoo piyasa akışı"
+                : "Gercek zamanli piyasa akışı",
             FetchedAt = DateTime.UtcNow,
             Quotes = quotes
         };
@@ -546,7 +546,7 @@ public class LiveMarketApiProvider(
             High24hInUsd = RoundPrice(Math.Max(currentUsd, previousUsd)),
             Low24hInUsd = RoundPrice(Math.Min(currentUsd, previousUsd)),
             SortOrder = rate.SortOrder,
-            Note = "Turkiye yerel alis/satis referansi",
+            Note = "Turkiye yerel alis/satış referansi",
             SourceType = "local_reference"
         };
     }

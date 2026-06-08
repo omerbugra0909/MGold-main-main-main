@@ -201,7 +201,7 @@ public class MarketDataService(
     public async Task UpdateProviderAsync(UpdateMarketProviderDto request, CancellationToken cancellationToken = default)
     {
         var entity = await context.MarketProviderConfigurations.FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken)
-            ?? throw new InvalidOperationException("Market provider bulunamadi.");
+            ?? throw new InvalidOperationException("Market provider bulunamadı.");
 
         entity.DisplayName = request.DisplayName.Trim();
         entity.IsEnabled = request.IsEnabled;
@@ -232,7 +232,7 @@ public class MarketDataService(
         {
             if (!providerLookup.TryGetValue(config.ProviderKey, out var provider))
             {
-                errors.Add($"{config.ProviderKey}: provider kayitli degil");
+                errors.Add($"{config.ProviderKey}: provider kayıtlı değil");
                 continue;
             }
 
@@ -255,7 +255,7 @@ public class MarketDataService(
                     ProviderDisplayName = payload.ProviderDisplayName,
                     LastUpdatedAt = payload.FetchedAt,
                     QuoteCount = payload.Quotes.Count,
-                    Message = payload.Note ?? "Market verileri guncellendi."
+                    Message = payload.Note ?? "Market verileri güncellendi."
                 };
 
                 cache.Set(RefreshLockCacheKey, result, TimeSpan.FromSeconds(Math.Max(8, config.RefreshIntervalSeconds / 2)));
@@ -285,7 +285,7 @@ public class MarketDataService(
                 ? await context.MarketQuoteSnapshots.MaxAsync(x => x.LastUpdatedAt, cancellationToken)
                 : DateTime.UtcNow,
             QuoteCount = storedCount,
-            Message = errors.Count == 0 ? "Kayitli market verisi kullanildi." : string.Join(" | ", errors)
+            Message = errors.Count == 0 ? "Kayıtli market verisi kullanildi." : string.Join(" | ", errors)
         };
 
         cache.Set(RefreshLockCacheKey, fallbackResult, TimeSpan.FromSeconds(8));

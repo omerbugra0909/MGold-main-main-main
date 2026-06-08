@@ -97,7 +97,7 @@ public class CustomerController(
             .FirstOrDefaultAsync(x => x.Id == productId, cancellationToken);
         if (product is null)
         {
-            TempData["Error"] = "Urun bulunamadi veya bu urune erisim yetkiniz yok.";
+            TempData["Error"] = "Ürün bulunamadı veya bu ürüne erişim yetkiniz yok.";
             return RedirectToLocal(returnUrl, nameof(Favorites));
         }
 
@@ -112,12 +112,12 @@ public class CustomerController(
                 ProductId = productId,
                 CreatedAt = DateTime.UtcNow
             }, cancellationToken);
-            TempData["Success"] = "Urun favorilere eklendi.";
+            TempData["Success"] = "Ürün favorilere eklendi.";
         }
         else
         {
             context.CustomerFavorites.Remove(favorite);
-            TempData["Success"] = "Urun favorilerden cikarildi.";
+            TempData["Success"] = "Ürün favorilerden çıkarıldı.";
         }
 
         await context.SaveChangesAsync(cancellationToken);

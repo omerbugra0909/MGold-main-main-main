@@ -31,9 +31,18 @@
     <None Remove="mgold-dev.db" />
     <None Update="dotnet-tools.json" CopyToPublishDirectory="Never" />
     <Content Update="dotnet-tools.json" CopyToPublishDirectory="Never" />
-    <Content Update="appsettings*.json" Watch="true" />
+    <Content Update="appsettings*.json" CopyToPublishDirectory="Never" />
+    <Content Update="appsettings.json" Watch="true" CopyToPublishDirectory="PreserveNewest" />
     <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+    <Content Update="Views\**\*.cshtml" CopyToPublishDirectory="PreserveNewest" />
     <Watch Remove=".git/**;bin/**;obj/**;.codex/**;Anthropic.claude-code-2.1.126@linux-x64/**" />
   </ItemGroup>
+
+  <Target Name="CopyViewsToPublishDirectory" AfterTargets="Publish">
+    <ItemGroup>
+      <MGoldPublishedViews Include="Views\**\*.cshtml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(MGoldPublishedViews)" DestinationFiles="@(MGoldPublishedViews->'$(PublishDir)%(Identity)')" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

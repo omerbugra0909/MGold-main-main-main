@@ -96,8 +96,8 @@ public class ProductReviewService(
 
         await context.Notifications.AddAsync(new Domain.Entities.Notification
         {
-            Title = "Yeni urun yorumu",
-            Message = $"{product.Name} icin onay bekleyen yeni bir yorum var.",
+            Title = "Yeni ürün yorumu",
+            Message = $"{product.Name} için onay bekleyen yeni bir yorum var.",
             Type = Domain.Enums.NotificationType.Info,
             TargetRole = RoleConstants.Manager,
             RelatedEntityName = nameof(Domain.Entities.ProductReview),

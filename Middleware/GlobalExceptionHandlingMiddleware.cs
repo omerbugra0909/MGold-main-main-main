@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.Data.SqlClient;
 using MGold.Application.Exceptions;
 using MGold.Common;
 
@@ -34,6 +35,9 @@ public class GlobalExceptionHandlingMiddleware(
             ArgumentException => (HttpStatusCode.BadRequest, exception.Message),
             AuthorizationException => (HttpStatusCode.Forbidden, exception.Message),
             UnauthorizedAccessException => (HttpStatusCode.Unauthorized, exception.Message),
+            SqlException => (HttpStatusCode.ServiceUnavailable, "Veritabanı bağlantısı kurulamadı. Plesk appsettings.json içindeki DefaultConnection değerini ve SQL kullanıcı şifresini kontrol edin."),
+            InvalidOperationException invalid when IsDatabaseConfigurationException(invalid)
+                => (HttpStatusCode.ServiceUnavailable, "Veritabanı bağlantısı yapılandırılmamış. Plesk appsettings.json içinde gerçek DefaultConnection değeri olmadan giriş, canlı market ve firma sayfaları çalışamaz."),
             _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
         };
 
@@ -74,5 +78,14 @@ public class GlobalExceptionHandlingMiddleware(
         return request.Headers.Accept.Any(x =>
             !string.IsNullOrWhiteSpace(x) &&
             x.Contains("application/json", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsDatabaseConfigurationException(Exception exception)
+    {
+        var message = exception.Message;
+        return message.Contains("ConnectionString", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("connection string", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("SQL Server", StringComparison.OrdinalIgnoreCase)
+            || exception.InnerException is not null && IsDatabaseConfigurationException(exception.InnerException);
     }
 }

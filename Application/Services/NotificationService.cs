@@ -109,8 +109,8 @@ public class NotificationService(
 
             await context.Notifications.AddAsync(new Domain.Entities.Notification
             {
-                Title = "Dusuk stok uyarisi",
-                Message = $"{product.Name} icin stok seviyesi {product.StockQuantity} adede dustu.",
+                Title = "Düşük stok uyarisi",
+                Message = $"{product.Name} için stok seviyesi {product.StockQuantity} adede düştü.",
                 Type = NotificationType.LowStock,
                 TargetRole = RoleConstants.Manager,
                 RelatedEntityName = nameof(Domain.Entities.Product),
@@ -120,8 +120,8 @@ public class NotificationService(
             }, cancellationToken);
 
             await SendAdminEmailAsync(
-                $"Dusuk stok uyarisi: {product.Name}",
-                $"{product.Name} icin stok seviyesi {product.StockQuantity} adede dustu.",
+                $"Düşük stok uyarisi: {product.Name}",
+                $"{product.Name} için stok seviyesi {product.StockQuantity} adede düştü.",
                 cancellationToken);
         }
 
@@ -154,7 +154,7 @@ public class NotificationService(
         var normalized = targetRole.Trim();
         if (!RoleConstants.All.Contains(normalized, StringComparer.Ordinal))
         {
-            throw new BusinessRuleException("Gecersiz hedef rol belirtildi.");
+            throw new BusinessRuleException("Geçersiz hedef rol belirtildi.");
         }
 
         return normalized;

@@ -18,10 +18,10 @@ public class DashboardService(
 
     private static readonly IReadOnlyList<DashboardFilterOptionDto> FilterOptions =
     [
-        new() { Value = DashboardRangePresets.Daily, Label = "Gunluk" },
-        new() { Value = DashboardRangePresets.Weekly, Label = "Haftalik" },
-        new() { Value = DashboardRangePresets.Monthly, Label = "Aylik" },
-        new() { Value = DashboardRangePresets.Yearly, Label = "Yillik" },
+        new() { Value = DashboardRangePresets.Daily, Label = "Günlük" },
+        new() { Value = DashboardRangePresets.Weekly, Label = "Haftalık" },
+        new() { Value = DashboardRangePresets.Monthly, Label = "Aylık" },
+        new() { Value = DashboardRangePresets.Yearly, Label = "Yıllık" },
         new() { Value = DashboardRangePresets.Custom, Label = "Ozel Aralik" }
     ];
 
@@ -231,16 +231,16 @@ public class DashboardService(
         {
             DailyOrders = new DashboardTrendChartDto
             {
-                Title = "Gunluk Siparis Trendi",
-                Subtitle = "Son 7 gun icindeki siparis dalgalanmasi",
+                Title = "Günlük Sipariş Trendi",
+                Subtitle = "Son 7 gün içindeki sipariş dalgalanmasi",
                 ChartType = "line",
-                ValueSuffix = " siparis",
+                ValueSuffix = " sipariş",
                 Series =
                 [
                     new DashboardSeriesDto
                     {
                         Key = "daily-orders",
-                        Label = "Siparis",
+                        Label = "Sipariş",
                         Color = "#e3c991",
                         Points = BuildTimeSeries(
                             filter.EndDate.Date.AddDays(-6),
@@ -252,16 +252,16 @@ public class DashboardService(
             },
             WeeklyOrders = new DashboardTrendChartDto
             {
-                Title = "Haftalik Siparis Trendi",
-                Subtitle = "Son 8 haftanin yogunluk karsilastirmasi",
+                Title = "Haftalık Sipariş Trendi",
+                Subtitle = "Son 8 haftanın yoğunluk karşılaştırması",
                 ChartType = "line",
-                ValueSuffix = " siparis",
+                ValueSuffix = " sipariş",
                 Series =
                 [
                     new DashboardSeriesDto
                     {
                         Key = "weekly-orders",
-                        Label = "Siparis",
+                        Label = "Sipariş",
                         Color = "#8fc5da",
                         Points = BuildWeeklyOrderPoints(orders, 8)
                     }
@@ -269,16 +269,16 @@ public class DashboardService(
             },
             MonthlyOrders = new DashboardTrendChartDto
             {
-                Title = "Aylik Siparis Trendi",
-                Subtitle = "Ay bazli siparis hacmi",
+                Title = "Aylık Sipariş Trendi",
+                Subtitle = "Ay bazli sipariş hacmi",
                 ChartType = "line",
-                ValueSuffix = " siparis",
+                ValueSuffix = " sipariş",
                 Series =
                 [
                     new DashboardSeriesDto
                     {
                         Key = "monthly-orders",
-                        Label = "Siparis",
+                        Label = "Sipariş",
                         Color = "#c79b53",
                         Points = BuildMonthlyOrderPoints(orders, 6)
                     }
@@ -286,16 +286,16 @@ public class DashboardService(
             },
             YearlyOrders = new DashboardTrendChartDto
             {
-                Title = "Yillik Siparis Trendi",
-                Subtitle = "Yil bazli hacim gorunumu",
+                Title = "Yıllık Sipariş Trendi",
+                Subtitle = "Yil bazli hacim görünumu",
                 ChartType = "line",
-                ValueSuffix = " siparis",
+                ValueSuffix = " sipariş",
                 Series =
                 [
                     new DashboardSeriesDto
                     {
                         Key = "yearly-orders",
-                        Label = "Siparis",
+                        Label = "Sipariş",
                         Color = "#81d4a1",
                         Points = orders.GroupBy(x => x.CreatedAt.Year)
                             .OrderBy(group => group.Key)
@@ -310,16 +310,16 @@ public class DashboardService(
             },
             CustomerHours = new DashboardTrendChartDto
             {
-                Title = "Musteri Siparis Saatleri",
-                Subtitle = "Gun icindeki yogun siparis anlari",
+                Title = "Müşteri Sipariş Saatleri",
+                Subtitle = "Gun içindeki yoğun sipariş anlari",
                 ChartType = "scatter",
-                ValueSuffix = " siparis",
+                ValueSuffix = " sipariş",
                 Series =
                 [
                     new DashboardSeriesDto
                     {
                         Key = "customer-hours",
-                        Label = "Saatlik yogunluk",
+                        Label = "Saatlik yoğunluk",
                         Color = "#ffb17d",
                         Points = Enumerable.Range(0, 24)
                             .Select(hour => new DashboardSeriesPointDto
@@ -333,16 +333,16 @@ public class DashboardService(
             },
             CustomerPeriods = new DashboardTrendChartDto
             {
-                Title = "Donemsel Kullanim Trendi",
-                Subtitle = "Haftanin gunlerine gore siparis kullanim yogunlugu",
+                Title = "Dönemsel Kullanim Trendi",
+                Subtitle = "Haftanin günlerine göre sipariş kullanim yoğunluğu",
                 ChartType = "bar",
-                ValueSuffix = " siparis",
+                ValueSuffix = " sipariş",
                 Series =
                 [
                     new DashboardSeriesDto
                     {
                         Key = "customer-periods",
-                        Label = "Gun bazli yogunluk",
+                        Label = "Gun bazli yoğunluk",
                         Color = "#b8a7ff",
                         Points = Enum.GetValues<DayOfWeek>()
                             .Select(day => new DashboardSeriesPointDto
@@ -367,7 +367,7 @@ public class DashboardService(
             RevenueVsExpense = new DashboardTrendChartDto
             {
                 Title = "Gelir / Gider Dengesi",
-                Subtitle = "Gun bazli finansal akis",
+                Subtitle = "Gun bazli finansal akış",
                 ChartType = "line",
                 ValueSuffix = " TL",
                 Series =
@@ -378,26 +378,26 @@ public class DashboardService(
             },
             NetProfitTrend = new DashboardTrendChartDto
             {
-                Title = "Net Kar Trendi",
-                Subtitle = "Kar/zarar momentumunu izler",
+                Title = "Net Kâr Trendi",
+                Subtitle = "Kar/zarar momentümunu izler",
                 ChartType = "line",
                 ValueSuffix = " TL",
                 Series =
                 [
-                    new DashboardSeriesDto { Key = "profit", Label = "Net Kar", Color = "#81d4a1", Points = profitSeries }
+                    new DashboardSeriesDto { Key = "profit", Label = "Net Kâr", Color = "#81d4a1", Points = profitSeries }
                 ]
             },
             RevenueComposition = new DashboardBreakdownChartDto
             {
                 Title = "Finansal Kompozisyon",
-                Subtitle = "Donem ozetinde gelir, gider ve net kar",
+                Subtitle = "Dönem özetinde gelir, gider ve net kâr",
                 ChartType = "bar",
                 ValueSuffix = " TL",
                 Items =
                 [
-                    new DashboardBreakdownItemDto { Label = "Toplam Gelir", Value = sales.Sum(x => x.TotalPrice), Detail = "Siparislerden gelen brut ciro" },
+                    new DashboardBreakdownItemDto { Label = "Toplam Gelir", Value = sales.Sum(x => x.TotalPrice), Detail = "Siparişlerden gelen brut ciro" },
                     new DashboardBreakdownItemDto { Label = "Toplam Gider", Value = sales.Sum(x => x.TotalCostSnapshot), Detail = "Maliyet ve operasyonel gider etkisi" },
-                    new DashboardBreakdownItemDto { Label = "Net Kar", Value = sales.Sum(x => x.ProfitOrLoss), Detail = "Toplam kar/zarar dengesi" }
+                    new DashboardBreakdownItemDto { Label = "Net Kâr", Value = sales.Sum(x => x.ProfitOrLoss), Detail = "Toplam kâr/zarar dengesi" }
                 ]
             }
         };
@@ -414,7 +414,7 @@ public class DashboardService(
             {
                 Label = group.Key,
                 Value = group.Sum(x => (decimal)x.Item.Quantity),
-                Detail = $"{group.Sum(x => (decimal)x.Item.TotalPrice):N0} TL siparis hacmi"
+                Detail = $"{group.Sum(x => (decimal)x.Item.TotalPrice):N0} TL sipariş hacmi"
             })
             .OrderByDescending(x => x.Value)
             .Take(8)
@@ -432,7 +432,7 @@ public class DashboardService(
             {
                 Label = product.Name,
                 Value = revenueByProductId.TryGetValue(product.Id, out var revenue) ? revenue : 0,
-                Detail = $"Stok {product.StockQuantity} • Satin alma hizi dusuk"
+                Detail = $"Stok {product.StockQuantity} • Satin alma hizi düşük"
             })
             .OrderBy(x => x.Value)
             .ThenByDescending(x => products.First(p => p.Name == x.Label).StockQuantity)
@@ -466,7 +466,7 @@ public class DashboardService(
             {
                 Label = group.Key.ToString(),
                 Value = group.Max(x => x.Revenue),
-                Detail = $"{group.Count()} urun kategoride bulunuyor"
+                Detail = $"{group.Count()} ürün kategoride bulunuyor"
             })
             .OrderByDescending(x => x.Value)
             .ToList();
@@ -475,23 +475,23 @@ public class DashboardService(
         {
             TopOrderedProducts = new DashboardBreakdownChartDto
             {
-                Title = "En Cok Siparis Edilen Urunler",
-                Subtitle = "Siparis adedi bazli liderler",
+                Title = "En Çok Sipariş Edilen Ürünler",
+                Subtitle = "Sipariş adedi bazli liderler",
                 ChartType = "bar",
                 ValueSuffix = " adet",
                 Items = topOrdered
             },
             LowPerformingProducts = new DashboardBreakdownChartDto
             {
-                Title = "Dusuk Performansli Urunler",
-                Subtitle = "Stokta duran ve gelir katkisi zayif urunler",
+                Title = "Düşük Performansli Ürünler",
+                Subtitle = "Stokta duran ve gelir katkisi zayif ürünler",
                 ChartType = "bar",
                 ValueSuffix = " TL",
                 Items = lowPerforming
             },
             StockBurnRate = new DashboardBreakdownChartDto
             {
-                Title = "Stok Tuketim Hizi",
+                Title = "Stok Tüketim Hizi",
                 Subtitle = "Satilan miktarin toplam stok havuzuna etkisi",
                 ChartType = "dot",
                 ValueSuffix = "%",
@@ -520,7 +520,7 @@ public class DashboardService(
                     _ => "Tamamlandi"
                 },
                 Value = tasks.Count(x => x.Status == status),
-                Detail = "Gorev dagilim durumu"
+                Detail = "Görev dagilim durumu"
             })
             .ToList();
 
@@ -530,7 +530,7 @@ public class DashboardService(
             {
                 Label = group.Key,
                 Value = group.Count(x => x.Status == TaskState.Completed),
-                Detail = $"{group.Count()} toplam gorev"
+                Detail = $"{group.Count()} toplam görev"
             })
             .OrderByDescending(x => x.Value)
             .Take(8)
@@ -543,7 +543,7 @@ public class DashboardService(
             {
                 Label = group.Key,
                 Value = group.Count(),
-                Detail = $"{group.Count(x => x.Status == OrderStatus.Completed)} tamamlanan siparis"
+                Detail = $"{group.Count(x => x.Status == OrderStatus.Completed)} tamamlanan sipariş"
             })
             .OrderByDescending(x => x.Value)
             .Take(8)
@@ -553,26 +553,26 @@ public class DashboardService(
         {
             TaskStatusDistribution = new DashboardBreakdownChartDto
             {
-                Title = "Gorev Durum Dagilimi",
-                Subtitle = "Bekleyen, devam eden ve tamamlanan gorevler",
+                Title = "Görev Durum Dagilimi",
+                Subtitle = "Bekleyen, devam eden ve tamamlanan görevler",
                 ChartType = "bar",
-                ValueSuffix = " gorev",
+                ValueSuffix = " görev",
                 Items = taskStatus
             },
             EmployeeTaskPerformance = new DashboardBreakdownChartDto
             {
-                Title = "Calisan Gorev Performansi",
-                Subtitle = "Tamamlanan gorev odakli performans",
+                Title = "Çalışan Görev Performansi",
+                Subtitle = "Tamamlanan görev odakli performans",
                 ChartType = "bar",
-                ValueSuffix = " gorev",
+                ValueSuffix = " görev",
                 Items = employeeTaskPerformance
             },
             EmployeeOrderWorkload = new DashboardBreakdownChartDto
             {
-                Title = "Islem Yogunlugu",
-                Subtitle = "Calisan bazli siparis akis yogunlugu",
+                Title = "İşlem Yoğunlugu",
+                Subtitle = "Çalışan bazli sipariş akış yoğunluğu",
                 ChartType = "bar",
-                ValueSuffix = " siparis",
+                ValueSuffix = " sipariş",
                 Items = employeeOrderWorkload
             }
         };
@@ -585,7 +585,7 @@ public class DashboardService(
             {
                 Label = $"{hour:00}:00",
                 Value = orders.Count(x => x.CreatedAt.Hour == hour),
-                Detail = "Bu saat dilimindeki siparis adedi"
+                Detail = "Bu saat dilimindeki sipariş adedi"
             })
             .OrderByDescending(x => x.Value)
             .Take(8)
@@ -596,7 +596,7 @@ public class DashboardService(
             {
                 Label = DayLabel(day),
                 Value = orders.Count(x => x.CreatedAt.DayOfWeek == day),
-                Detail = "Haftalik kullanim yogunlugu"
+                Detail = "Haftalık kullanim yoğunluğu"
             })
             .OrderByDescending(x => x.Value)
             .ToList();
@@ -605,18 +605,18 @@ public class DashboardService(
         {
             PeakCustomerHours = new DashboardBreakdownChartDto
             {
-                Title = "Musteri Siparis Yogunluk Saatleri",
-                Subtitle = "Gun icinde en cok siparis acilan saatler",
+                Title = "Müşteri Sipariş Yoğunluk Saatleri",
+                Subtitle = "Gun içinde en çok sipariş açılan saatler",
                 ChartType = "dot",
-                ValueSuffix = " siparis",
+                ValueSuffix = " sipariş",
                 Items = hourItems
             },
             PeakCustomerPeriods = new DashboardBreakdownChartDto
             {
-                Title = "Donemsel Kullanim Yogunlugu",
-                Subtitle = "Haftanin gunlerine gore kullanim dagilimi",
+                Title = "Dönemsel Kullanim Yoğunlugu",
+                Subtitle = "Haftanin günlerine göre kullanim dagilimi",
                 ChartType = "bar",
-                ValueSuffix = " siparis",
+                ValueSuffix = " sipariş",
                 Items = periodItems
             }
         };

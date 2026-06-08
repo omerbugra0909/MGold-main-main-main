@@ -109,7 +109,7 @@ public class WorkforceService(
     {
         accessControlService.EnsureEmployeeWorkspaceAccess();
 
-        var userId = currentUserService.UserId ?? throw new AuthorizationException("Kullanici cozulemedi.");
+        var userId = currentUserService.UserId ?? throw new AuthorizationException("Kullanıcı çözülemedi.");
         var user = await context.AppUsers.AsNoTracking().Include(x => x.Company).FirstAsync(x => x.Id == userId, cancellationToken);
         accessControlService.EnsureSameCompany(user.CompanyId);
 
@@ -218,21 +218,21 @@ public class WorkforceService(
         var normalizedRole = dto.Role.Trim();
         if (normalizedRole != RoleConstants.Manager && normalizedRole != RoleConstants.Employee)
         {
-            throw new BusinessRuleException("Sadece yonetici veya calisan kullanicisi olusturulabilir.");
+            throw new BusinessRuleException("Sadece yönetici veya çalışan kullanıcısi oluşturulabilir.");
         }
 
         if (currentUserService.IsInRole(RoleConstants.Manager))
         {
             if (normalizedRole != RoleConstants.Employee)
             {
-                throw new BusinessRuleException("Patron hesaplari yalnizca kendi firmasina calisan ekleyebilir.");
+                throw new BusinessRuleException("Patron hesapları yalnızca kendi firmasina çalışan ekleyebilir.");
             }
 
             accessControlService.EnsureSameCompany(dto.CompanyId);
         }
 
         var company = await context.Companies.FirstOrDefaultAsync(x => x.Id == dto.CompanyId, cancellationToken)
-            ?? throw new BusinessRuleException("Firma bulunamadi.");
+            ?? throw new BusinessRuleException("Firma bulunamadı.");
 
         var normalizedUsername = dto.Username.Trim().ToLowerInvariant();
         var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
@@ -240,7 +240,7 @@ public class WorkforceService(
 
         if (await context.AppUsers.AnyAsync(x => x.Username == normalizedUsername || x.Email == normalizedEmail, cancellationToken))
         {
-            throw new BusinessRuleException("Ayni kullanici adi veya e-posta ile kayitli baska bir kullanici var.");
+            throw new BusinessRuleException("Aynı kullanıcı adi veya e-posta ile kayıtlı başka bir kullanıcı var.");
         }
 
         var user = new AppUser
@@ -273,22 +273,22 @@ public class WorkforceService(
     {
         accessControlService.EnsureManagerOrSystemAdmin();
 
-        var assignedByUserId = currentUserService.UserId ?? throw new AuthorizationException("Kullanici bulunamadi.");
+        var assignedByUserId = currentUserService.UserId ?? throw new AuthorizationException("Kullanıcı bulunamadı.");
         var assignedBy = await context.AppUsers.FirstAsync(x => x.Id == assignedByUserId, cancellationToken);
         var assignedTo = await context.AppUsers.FirstOrDefaultAsync(x => x.Id == dto.AssignedToUserId, cancellationToken)
-            ?? throw new BusinessRuleException("Gorev atanacak calisan bulunamadi.");
+            ?? throw new BusinessRuleException("Görev atanacak çalışan bulunamadı.");
 
         accessControlService.EnsureSameCompany(assignedBy.CompanyId);
         accessControlService.EnsureSameCompany(assignedTo.CompanyId);
 
         if (assignedTo.Role != RoleConstants.Employee)
         {
-            throw new BusinessRuleException("Gorev yalnizca calisan rolundeki kullanicilara atanabilir.");
+            throw new BusinessRuleException("Görev yalnızca çalışan rolundeki kullanıcılara atanabilir.");
         }
 
         var task = new WorkTask
         {
-            CompanyId = assignedBy.CompanyId ?? assignedTo.CompanyId ?? throw new BusinessRuleException("Firma baglami bulunamadi."),
+            CompanyId = assignedBy.CompanyId ?? assignedTo.CompanyId ?? throw new BusinessRuleException("Firma bağlami bulunamadı."),
             Title = dto.Title.Trim(),
             Description = dto.Description?.Trim(),
             AssignedByUserId = assignedByUserId,
@@ -302,8 +302,8 @@ public class WorkforceService(
 
         task.HistoryEntries.Add(new WorkTaskHistoryEntry
         {
-            ActionTitle = "Gorev olusturuldu",
-            Description = "Yonetici tarafindan yeni gorev atandi.",
+            ActionTitle = "Görev oluşturuldu",
+            Description = "Yönetici tarafından yeni görev atandi.",
             NewStatus = TaskState.Waiting,
             ActorUserId = assignedByUserId,
             CreatedAt = DateTime.UtcNow
@@ -326,20 +326,20 @@ public class WorkforceService(
     {
         accessControlService.EnsureEmployeeWorkspaceAccess();
 
-        var userId = currentUserService.UserId ?? throw new AuthorizationException("Kullanici bulunamadi.");
+        var userId = currentUserService.UserId ?? throw new AuthorizationException("Kullanıcı bulunamadı.");
         var task = await context.WorkTasks
             .Include(x => x.AssignedByUser)
             .Include(x => x.AssignedToUser)
             .Include(x => x.HistoryEntries)
             .FirstOrDefaultAsync(x => x.Id == taskId, cancellationToken)
-            ?? throw new BusinessRuleException("Gorev bulunamadi.");
+            ?? throw new BusinessRuleException("Görev bulunamadı.");
 
         accessControlService.EnsureSameCompany(task.CompanyId);
 
         var isManager = currentUserService.IsInRole(RoleConstants.Manager) || currentUserService.IsInRole(RoleConstants.SystemAdmin);
         if (!isManager && task.AssignedToUserId != userId)
         {
-            throw new AuthorizationException("Bu gorev sadece ilgili calisan tarafindan guncellenebilir.");
+            throw new AuthorizationException("Bu görev sadece ilgili çalışan tarafından güncellenebilir.");
         }
 
         var previousStatus = task.Status;
@@ -349,7 +349,7 @@ public class WorkforceService(
         task.HistoryEntries.Add(new WorkTaskHistoryEntry
         {
             WorkTaskId = task.Id,
-            ActionTitle = "Durum guncellendi",
+            ActionTitle = "Durum güncellendi",
             Description = dto.Note?.Trim(),
             PreviousStatus = previousStatus,
             NewStatus = dto.Status,
@@ -390,7 +390,7 @@ public class WorkforceService(
             }
         }
 
-        throw new AuthorizationException("Firma baglami bulunamadi.");
+        throw new AuthorizationException("Firma bağlami bulunamadı.");
     }
 
     private static CompanySummaryDto MapCompanySummary(Company company)

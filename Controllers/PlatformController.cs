@@ -14,8 +14,8 @@ public class PlatformController(IWorkforceService workforceService) : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        ViewData["Title"] = "Platform Yonetimi";
-        ViewData["PageDescription"] = "Firmalar, yoneticiler ve platform organizasyonu tek merkezden yonetilir.";
+        ViewData["Title"] = "Platform Yönetimi";
+        ViewData["PageDescription"] = "Firmalar, yöneticiler ve platform organizasyonu tek merkezden yönetilir.";
         return View(await workforceService.GetPlatformDashboardAsync(cancellationToken));
     }
 
@@ -30,7 +30,7 @@ public class PlatformController(IWorkforceService workforceService) : Controller
         }
 
         await workforceService.CreateCompanyAsync(dto, cancellationToken);
-        TempData["Success"] = "Yeni firma olusturuldu.";
+        TempData["Success"] = "Yeni firma oluşturuldu.";
         return Redirect("/admin/platform");
     }
 
@@ -40,12 +40,12 @@ public class PlatformController(IWorkforceService workforceService) : Controller
     {
         if (!ModelState.IsValid)
         {
-            TempData["Error"] = "Kullanici bilgilerini kontrol edin.";
+            TempData["Error"] = "Kullanıcı bilgilerini kontrol edin.";
             return Redirect("/admin/platform");
         }
 
         await workforceService.CreateInternalUserAsync(dto, cancellationToken);
-        TempData["Success"] = "Firma kullanicisi olusturuldu.";
+        TempData["Success"] = "Firma kullanıcısi oluşturuldu.";
         return Redirect("/admin/platform");
     }
 }

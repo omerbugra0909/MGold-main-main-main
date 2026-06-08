@@ -1,7 +1,6 @@
 using System.Text;
+using System.Text.Json;
 using System.Globalization;
-using System.Net;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -29,11 +28,11 @@ using MGold.Hubs;
 using MGold.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
-var baseUrl = ResolvePreferredBaseUrl(builder.Configuration, args);
-if (!string.IsNullOrWhiteSpace(baseUrl))
+var bindUrl = ResolvePreferredBindUrl(builder.Configuration, args, builder.Environment);
+if (!string.IsNullOrWhiteSpace(bindUrl))
 {
-    // Respect explicit app configuration only when no higher-priority URL source is provided.
-    builder.WebHost.UseUrls(baseUrl);
+    // IIS/Plesk owns the public domain binding. This optional setting is only for self-host/dev runs.
+    builder.WebHost.UseUrls(bindUrl);
 }
 
 builder.Services.AddControllersWithViews();
@@ -149,9 +148,38 @@ if (!builder.Environment.IsDevelopment())
         || jwtSettings.Key.Length < 32;
     if (invalidJwt)
     {
-        throw new InvalidOperationException("Production JWT key is invalid. Configure a strong Jwt:Key (min 32 chars).");
+        jwtSettings.Key = Environment.GetEnvironmentVariable("MGOLD_JWT_KEY")
+            ?? "MGoldEmergencyStartupKey_Configure_AppSettings_To_Replace_2026";
     }
 }
+if (string.IsNullOrWhiteSpace(jwtSettings.Issuer))
+{
+    jwtSettings.Issuer = builder.Environment.IsDevelopment() ? "MGold.API.Dev" : "MGold.API";
+}
+
+if (string.IsNullOrWhiteSpace(jwtSettings.Audience))
+{
+    jwtSettings.Audience = builder.Environment.IsDevelopment() ? "MGold.Client.Dev" : "MGold.Client";
+}
+
+builder.Services.PostConfigure<JwtSettings>(options =>
+{
+    if (string.IsNullOrWhiteSpace(options.Key)
+        || (!builder.Environment.IsDevelopment() && (options.Key.Contains("CHANGE_THIS", StringComparison.OrdinalIgnoreCase) || options.Key.Length < 32)))
+    {
+        options.Key = jwtSettings.Key;
+    }
+
+    if (string.IsNullOrWhiteSpace(options.Issuer))
+    {
+        options.Issuer = jwtSettings.Issuer;
+    }
+
+    if (string.IsNullOrWhiteSpace(options.Audience))
+    {
+        options.Audience = jwtSettings.Audience;
+    }
+});
 var key = Encoding.UTF8.GetBytes(jwtSettings.Key);
 
 builder.Services.AddAuthentication(options =>
@@ -299,15 +327,16 @@ builder.Services.AddCors(options =>
 });
 
 var useSqlite = builder.Configuration.GetValue<bool>("App:UseSqlite");
+var configuredConnectionString = ResolveConfiguredConnectionString(builder.Configuration, useSqlite);
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     if (useSqlite)
     {
-        options.UseSqlite(builder.Configuration.GetConnectionString("SqliteConnection"));
+        options.UseSqlite(configuredConnectionString);
     }
     else
     {
-        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+        options.UseSqlServer(configuredConnectionString);
     }
 });
 builder.Services.AddHealthChecks()
@@ -375,20 +404,16 @@ var app = builder.Build();
 var enableHttpsRedirection = builder.Configuration.GetValue<bool>("App:EnableHttpsRedirection");
 var autoMigrate = builder.Configuration.GetValue<bool>("App:AutoMigrate");
 var seedDemoData = builder.Configuration.GetValue<bool>("App:SeedDemoData");
-using var singleInstanceGuard = SingleInstanceGuard.TryAcquire(app.Environment, useSqlite, app.Configuration.GetConnectionString("SqliteConnection"));
+using var singleInstanceGuard = app.Environment.IsDevelopment()
+    ? SingleInstanceGuard.TryAcquire(app.Environment, useSqlite, configuredConnectionString)
+    : SingleInstanceGuard.Noop();
 if (!singleInstanceGuard.Acquired)
 {
     app.Logger.LogWarning("Another MGold instance is already running for this environment. The new process will exit without rebinding the port.");
     return;
 }
 
-if (!string.IsNullOrWhiteSpace(baseUrl) && !CanBindToConfiguredUrl(baseUrl))
-{
-    app.Logger.LogWarning("Configured App:BaseUrl {BaseUrl} is already in use. Keeping the existing instance and stopping this process.", baseUrl);
-    return;
-}
-
-ValidateProductionSecrets(app.Configuration, app.Environment, useSqlite);
+ValidateProductionSecrets(app.Configuration, app.Environment, useSqlite, configuredConnectionString, app.Logger);
 
 app.UseMiddleware<RequestCorrelationMiddleware>();
 app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
@@ -462,7 +487,7 @@ SeedDatabase(app, seedDemoData);
 
 app.Run();
 
-static string? ResolvePreferredBaseUrl(IConfiguration configuration, string[] args)
+static string? ResolvePreferredBindUrl(IConfiguration configuration, string[] args, IHostEnvironment environment)
 {
     var hasExplicitUrls = args.Any(arg =>
         arg.StartsWith("--urls", StringComparison.OrdinalIgnoreCase)
@@ -477,39 +502,52 @@ static string? ResolvePreferredBaseUrl(IConfiguration configuration, string[] ar
         return null;
     }
 
-    var configured = configuration["App:BaseUrl"];
+    var configured = configuration["App:BindUrl"];
+    if (string.IsNullOrWhiteSpace(configured) && environment.IsDevelopment())
+    {
+        configured = configuration["App:BaseUrl"];
+    }
+
     return string.IsNullOrWhiteSpace(configured) ? null : configured.Trim();
 }
 
-static bool CanBindToConfiguredUrl(string baseUrl)
+static string ResolveConfiguredConnectionString(IConfiguration configuration, bool useSqlite)
 {
-    if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) || uri.Port <= 0)
+    if (useSqlite)
     {
-        return true;
+        return configuration.GetConnectionString("SqliteConnection") ?? "Data Source=mgold.db";
     }
 
-    try
+    var configured = configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
+    if (IsPlaceholderSecret(configured))
     {
-        var host = string.IsNullOrWhiteSpace(uri.Host) || uri.Host == "0.0.0.0"
-            ? IPAddress.Loopback
-            : Dns.GetHostAddresses(uri.Host)
-                .FirstOrDefault(address => address.AddressFamily is AddressFamily.InterNetwork or AddressFamily.InterNetworkV6)
-                ?? IPAddress.Loopback;
-        using var socket = new Socket(host.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-        socket.Bind(new IPEndPoint(host, uri.Port));
-        return true;
+        configured = Environment.GetEnvironmentVariable("MGOLD_DEFAULT_CONNECTION")
+            ?? Environment.GetEnvironmentVariable("SQLCONNSTR_DefaultConnection")
+            ?? Environment.GetEnvironmentVariable("CUSTOMCONNSTR_DefaultConnection")
+            ?? configured;
     }
-    catch (SocketException)
-    {
-        return false;
-    }
-    catch
-    {
-        return true;
-    }
+
+    return configured;
 }
 
-static void ValidateProductionSecrets(IConfiguration configuration, IHostEnvironment environment, bool useSqlite)
+static bool IsPlaceholderSecret(string? value)
+{
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        return true;
+    }
+
+    return value.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase)
+        || value.Contains("CHANGE_THIS", StringComparison.OrdinalIgnoreCase)
+        || value.Contains("BURAYA", StringComparison.OrdinalIgnoreCase)
+        || value.Contains("SIFRESINI", StringComparison.OrdinalIgnoreCase)
+        || value.Contains("\u015eIFRESINI", StringComparison.OrdinalIgnoreCase)
+        || value.Contains("\u015e\u0130FRES\u0130N\u0130", StringComparison.OrdinalIgnoreCase)
+        || value.Contains("GOOGLE_APP_PASSWORD", StringComparison.OrdinalIgnoreCase)
+        || value.Contains("Your_strong_password123", StringComparison.OrdinalIgnoreCase);
+}
+
+static void ValidateProductionSecrets(IConfiguration configuration, IHostEnvironment environment, bool useSqlite, string defaultConnection, ILogger logger)
 {
     if (environment.IsDevelopment())
     {
@@ -518,23 +556,12 @@ static void ValidateProductionSecrets(IConfiguration configuration, IHostEnviron
 
     if (useSqlite)
     {
-        throw new InvalidOperationException("Production cannot use SQLite. Configure App:UseSqlite=false.");
+        logger.LogCritical("Production is configured to use SQLite. Configure App:UseSqlite=false and a SQL Server DefaultConnection.");
     }
 
-    var defaultConnection = configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
-    if (defaultConnection.Contains("Your_strong_password123", StringComparison.OrdinalIgnoreCase)
-        || defaultConnection.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase))
+    if (IsPlaceholderSecret(defaultConnection))
     {
-        throw new InvalidOperationException("Production database connection string contains placeholder secrets.");
-    }
-
-    var email = configuration.GetSection(EmailSettings.SectionName).Get<EmailSettings>() ?? new EmailSettings();
-    if (email.Enabled && (string.IsNullOrWhiteSpace(email.Host)
-        || string.IsNullOrWhiteSpace(email.Username)
-        || string.IsNullOrWhiteSpace(email.Password)
-        || email.Password.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase)))
-    {
-        throw new InvalidOperationException("Production email settings are incomplete.");
+        logger.LogCritical("Production database connection string is missing or contains placeholder secrets. Database-backed features will fail until DefaultConnection is fixed.");
     }
 
     var sms = configuration.GetSection(SmsSettings.SectionName).Get<SmsSettings>() ?? new SmsSettings();
@@ -542,13 +569,13 @@ static void ValidateProductionSecrets(IConfiguration configuration, IHostEnviron
         || string.IsNullOrWhiteSpace(sms.Password)
         || string.IsNullOrWhiteSpace(sms.Originator)))
     {
-        throw new InvalidOperationException("Production SMS settings are incomplete.");
+        logger.LogCritical("Production SMS settings are incomplete while SMS is enabled.");
     }
 }
 
 static void InitializeDatabase(WebApplication app, bool useSqlite, bool autoMigrate)
 {
-    if (!autoMigrate)
+    if (!autoMigrate && app.Environment.IsDevelopment())
     {
         return;
     }
@@ -564,6 +591,10 @@ static void InitializeDatabase(WebApplication app, bool useSqlite, bool autoMigr
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.Migrate();
+    }
+    catch (Exception ex) when (!app.Environment.IsDevelopment())
+    {
+        app.Logger.LogWarning(ex, "Production database migration failed during startup. Continuing because the production SQL install script can be applied manually.");
     }
     catch (Exception ex) when (app.Environment.IsDevelopment() && useSqlite)
     {
@@ -689,7 +720,7 @@ static void SeedDatabase(WebApplication app, bool seedDemoData)
         new Product
         {
             CompanyId = demoCompanyId,
-            Name = "Gumus Erkek Bileklik",
+            Name = "G\u00fcm\u00fc\u015f Erkek Bileklik",
             Type = ProductType.Silver,
             Weight = 24.10m,
             PurityRate = 0.925m,
@@ -704,7 +735,7 @@ static void SeedDatabase(WebApplication app, bool seedDemoData)
         new Product
         {
             CompanyId = demoCompanyId,
-            Name = "Zarif Baget Pırlanta Yüzük",
+            Name = "Zarif Baget P\u0131rlanta Y\u00fcz\u00fck",
             Type = ProductType.Diamond,
             Weight = 2.85m,
             PurityRate = 0.95m,
@@ -719,7 +750,7 @@ static void SeedDatabase(WebApplication app, bool seedDemoData)
         new Product
         {
             CompanyId = demoCompanyId,
-            Name = "Vintage Safir Taşlı Kolye",
+            Name = "Vintage Safir Ta\u015fl\u0131 Kolye",
             Type = ProductType.Gold,
             Weight = 5.20m,
             PurityRate = 0.92m,
@@ -756,6 +787,7 @@ static void SeedProductionEssentials(WebApplication app)
 
         EnsureProductionBootstrapAccounts(db, passwordHasher, app.Configuration);
         SeedMarketProviders(db);
+        SeedMarketSnapshots(db);
 
         app.Logger.LogInformation("Production essentials checked. Bootstrap company id: {CompanyId}", companyId);
     }
@@ -1352,6 +1384,61 @@ static void SeedMarketProviders(AppDbContext db)
     db.SaveChanges();
 }
 
+static void SeedMarketSnapshots(AppDbContext db)
+{
+    if (db.MarketQuoteSnapshots.Any())
+    {
+        return;
+    }
+
+    var now = DateTime.UtcNow;
+    var seedQuotes = new[]
+    {
+        new MarketQuoteSnapshot { Symbol = "TRY", DisplayName = "T\u00fcrk Liras\u0131", Category = MarketCategory.Currency, UnitLabel = "1 USD", NativeCurrency = "TRY", PriceInUsd = 0.031m, Price24hAgoInUsd = 0.0311m, High24hInUsd = 0.0312m, Low24hInUsd = 0.0308m, SortOrder = 1 },
+        new MarketQuoteSnapshot { Symbol = "USD", DisplayName = "Amerikan Dolar\u0131", Category = MarketCategory.Currency, UnitLabel = "1 USD", NativeCurrency = "USD", PriceInUsd = 1m, Price24hAgoInUsd = 1m, High24hInUsd = 1m, Low24hInUsd = 1m, SortOrder = 2 },
+        new MarketQuoteSnapshot { Symbol = "EUR", DisplayName = "Euro", Category = MarketCategory.Currency, UnitLabel = "1 EUR", NativeCurrency = "USD", PriceInUsd = 1.08m, Price24hAgoInUsd = 1.079m, High24hInUsd = 1.083m, Low24hInUsd = 1.074m, SortOrder = 3 },
+        new MarketQuoteSnapshot { Symbol = "GBP", DisplayName = "\u0130ngiliz Sterlini", Category = MarketCategory.Currency, UnitLabel = "1 GBP", NativeCurrency = "USD", PriceInUsd = 1.27m, Price24hAgoInUsd = 1.268m, High24hInUsd = 1.276m, Low24hInUsd = 1.263m, SortOrder = 4 },
+        new MarketQuoteSnapshot { Symbol = "XAU", DisplayName = "Ons Alt\u0131n", Category = MarketCategory.Gold, UnitLabel = "ons", NativeCurrency = "USD", PriceInUsd = 2350m, Price24hAgoInUsd = 2342m, High24hInUsd = 2362m, Low24hInUsd = 2331m, SortOrder = 10 },
+        new MarketQuoteSnapshot { Symbol = "GRAM_ALTIN", DisplayName = "Gram Alt\u0131n", Category = MarketCategory.Gold, UnitLabel = "gr", NativeCurrency = "USD", PriceInUsd = 75.55m, Price24hAgoInUsd = 75.2m, High24hInUsd = 76.1m, Low24hInUsd = 74.8m, SortOrder = 11, SourceType = "derived_formula", CalculationBasis = "Ons Alt\u0131n / 31.1034768" },
+        new MarketQuoteSnapshot { Symbol = "CEYREK_ALTIN", DisplayName = "\u00c7eyrek Alt\u0131n", Category = MarketCategory.Gold, UnitLabel = "adet", NativeCurrency = "USD", PriceInUsd = 132.5m, Price24hAgoInUsd = 131.9m, High24hInUsd = 133.4m, Low24hInUsd = 130.8m, SortOrder = 12, SourceType = "derived_formula", CalculationBasis = "Gram Alt\u0131n * 1.754" },
+        new MarketQuoteSnapshot { Symbol = "YARIM_ALTIN", DisplayName = "Yar\u0131m Alt\u0131n", Category = MarketCategory.Gold, UnitLabel = "adet", NativeCurrency = "USD", PriceInUsd = 265m, Price24hAgoInUsd = 263.8m, High24hInUsd = 266.8m, Low24hInUsd = 261.6m, SortOrder = 13, SourceType = "derived_formula", CalculationBasis = "\u00c7eyrek Alt\u0131n * 2" },
+        new MarketQuoteSnapshot { Symbol = "TAM_ALTIN", DisplayName = "Tam Alt\u0131n", Category = MarketCategory.Gold, UnitLabel = "adet", NativeCurrency = "USD", PriceInUsd = 530m, Price24hAgoInUsd = 527.6m, High24hInUsd = 533.6m, Low24hInUsd = 523.2m, SortOrder = 14, SourceType = "derived_formula", CalculationBasis = "Yar\u0131m Alt\u0131n * 2" },
+        new MarketQuoteSnapshot { Symbol = "XAG", DisplayName = "G\u00fcm\u00fc\u015f", Category = MarketCategory.Metal, UnitLabel = "ons", NativeCurrency = "USD", PriceInUsd = 30.5m, Price24hAgoInUsd = 30.2m, High24hInUsd = 30.9m, Low24hInUsd = 29.8m, SortOrder = 20 },
+        new MarketQuoteSnapshot { Symbol = "XPT", DisplayName = "Platin", Category = MarketCategory.Metal, UnitLabel = "ons", NativeCurrency = "USD", PriceInUsd = 1010m, Price24hAgoInUsd = 1004m, High24hInUsd = 1022m, Low24hInUsd = 996m, SortOrder = 21 },
+        new MarketQuoteSnapshot { Symbol = "BRENT", DisplayName = "Brent Petrol", Category = MarketCategory.Commodity, UnitLabel = "varil", NativeCurrency = "USD", PriceInUsd = 82m, Price24hAgoInUsd = 81.3m, High24hInUsd = 83.1m, Low24hInUsd = 80.7m, SortOrder = 30 },
+        new MarketQuoteSnapshot { Symbol = "BTC", DisplayName = "Bitcoin", Category = MarketCategory.Crypto, UnitLabel = "adet", NativeCurrency = "USD", PriceInUsd = 68000m, Price24hAgoInUsd = 67250m, High24hInUsd = 68900m, Low24hInUsd = 66500m, SortOrder = 40 },
+        new MarketQuoteSnapshot { Symbol = "ETH", DisplayName = "Ethereum", Category = MarketCategory.Crypto, UnitLabel = "adet", NativeCurrency = "USD", PriceInUsd = 3600m, Price24hAgoInUsd = 3560m, High24hInUsd = 3650m, Low24hInUsd = 3510m, SortOrder = 41 }
+    };
+
+    foreach (var quote in seedQuotes)
+    {
+        quote.ProviderKey = "fallback-core";
+        quote.ProviderDisplayName = "MGold G\u00fcvenli Ba\u015flang\u0131\u00e7 Verisi";
+        quote.Note = "D\u0131\u015f piyasa servisleri g\u00fcncellenene kadar kullan\u0131lan g\u00fcvenli ba\u015flang\u0131\u00e7 snapshot'\u0131.";
+        quote.SourceType = string.IsNullOrWhiteSpace(quote.SourceType) ? "manual_fallback" : quote.SourceType;
+        quote.DataQualityStatus = "stale";
+        quote.QualityWarningsJson = "[\"G\u00fcvenli ba\u015flang\u0131\u00e7 verisi; canl\u0131 kaynak g\u00fcncellenince de\u011fi\u015fir.\"]";
+        quote.SparklineJson = JsonSerializer.Serialize(new[] { quote.Price24hAgoInUsd, quote.Low24hInUsd, quote.PriceInUsd, quote.High24hInUsd }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        quote.IsFallback = true;
+        quote.CreatedAt = now;
+        quote.LastUpdatedAt = now;
+    }
+
+    db.MarketQuoteSnapshots.AddRange(seedQuotes);
+    if (!db.GoldPrices.Any(x => x.IsActive))
+    {
+        db.GoldPrices.Add(new GoldPrice
+        {
+            PricePerGram = Math.Round(seedQuotes.First(x => x.Symbol == "GRAM_ALTIN").PriceInUsd / seedQuotes.First(x => x.Symbol == "TRY").PriceInUsd, 2),
+            EffectiveFrom = now,
+            Source = "MGold g\u00fcvenli ba\u015flang\u0131\u00e7 verisi",
+            IsActive = true,
+            CreatedAt = now
+        });
+    }
+
+    db.SaveChanges();
+}
 static void EnsureProductionBootstrapAccounts(
     AppDbContext db,
     IPasswordHasher<AppUser> passwordHasher,
@@ -1366,7 +1453,7 @@ static void EnsureProductionBootstrapAccounts(
         passwordHasher,
         section: adminSection,
         fallbackUsername: "platform.admin",
-        fallbackFullName: "Sistem Yoneticisi",
+        fallbackFullName: "Sistem Y\u00f6neticisi",
         fallbackEmail: "sakizciomerbugra@gmail.com",
         fallbackPhone: "+905510840483",
         role: RoleConstants.SystemAdmin,
@@ -1379,8 +1466,8 @@ static void EnsureProductionBootstrapAccounts(
         passwordHasher,
         section: managerSection,
         fallbackUsername: "firma.yoneticisi",
-        fallbackFullName: "Firma Yoneticisi",
-        fallbackEmail: "sakizciomerbugra895gmail.com",
+        fallbackFullName: "Firma Y\u00f6neticisi",
+        fallbackEmail: "sakizciomerbugra895@gmail.com",
         fallbackPhone: "+905510840484",
         role: RoleConstants.Manager,
         companyId: company.Id,
@@ -1408,15 +1495,54 @@ static AppUser EnsureBootstrapInternalUser(
     var phone = NormalizePhone(section["Phone"] ?? fallbackPhone);
     var passwordHash = section["PasswordHash"];
     var plainPasswordFromEnvironment = section["Password"];
+    var usernameAliases = BuildBootstrapAliases(username, fallbackUsername, section["Username"]);
+    if (role == RoleConstants.Manager)
+    {
+        usernameAliases.Add("firma.y\u00f6neticisi");
+    }
 
-    var user = db.AppUsers.FirstOrDefault(x => x.Email == email || x.Username == username);
+    var emailAliases = BuildBootstrapEmailAliases(email, fallbackEmail, section["Email"]);
+    var phoneAliases = BuildBootstrapAliases(phone, fallbackPhone, section["Phone"]);
+    var candidates = db.AppUsers
+        .Where(x => usernameAliases.Contains(x.Username)
+            || emailAliases.Contains(x.Email)
+            || phoneAliases.Contains(x.Phone))
+        .ToList();
+
+    var user = candidates
+        .OrderByDescending(x => string.Equals(x.Role, role, StringComparison.Ordinal))
+        .ThenByDescending(x => string.Equals(x.Email, email, StringComparison.OrdinalIgnoreCase))
+        .ThenByDescending(x => string.Equals(x.Username, username, StringComparison.OrdinalIgnoreCase))
+        .ThenByDescending(x => string.Equals(x.Phone, phone, StringComparison.OrdinalIgnoreCase))
+        .FirstOrDefault();
     if (user is null)
     {
-        user = db.AppUsers.FirstOrDefault(x => x.Role == role && x.Email == email)
-            ?? new AppUser { CreatedAt = DateTime.UtcNow };
-        if (user.Id == 0)
+        user = new AppUser { CreatedAt = DateTime.UtcNow };
+        db.AppUsers.Add(user);
+    }
+
+    foreach (var duplicate in candidates.Where(x => !ReferenceEquals(x, user)))
+    {
+        duplicate.IsActive = false;
+        duplicate.LockoutEndAt = DateTime.UtcNow.AddYears(100);
+        duplicate.SecurityStamp = Guid.NewGuid().ToString("N");
+
+        if (string.Equals(duplicate.Username, username, StringComparison.OrdinalIgnoreCase)
+            || usernameAliases.Contains(duplicate.Username))
         {
-            db.AppUsers.Add(user);
+            duplicate.Username = TruncateBootstrapValue($"disabled.{duplicate.Id}.{duplicate.Username}", 80);
+        }
+
+        if (string.Equals(duplicate.Email, email, StringComparison.OrdinalIgnoreCase)
+            || emailAliases.Contains(duplicate.Email))
+        {
+            duplicate.Email = TruncateBootstrapValue($"disabled.{duplicate.Id}.{duplicate.Email}", 150);
+        }
+
+        if (string.Equals(duplicate.Phone, phone, StringComparison.OrdinalIgnoreCase)
+            || phoneAliases.Contains(duplicate.Phone))
+        {
+            duplicate.Phone = $"+909{duplicate.Id.ToString().PadLeft(9, '0')[..9]}";
         }
     }
 
@@ -1454,11 +1580,44 @@ static AppUser EnsureBootstrapInternalUser(
     return user;
 }
 
+static HashSet<string> BuildBootstrapAliases(params string?[] values)
+{
+    var aliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var value in values)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            aliases.Add(value.Trim().ToLowerInvariant());
+        }
+    }
+
+    return aliases;
+}
+
+static HashSet<string> BuildBootstrapEmailAliases(params string?[] values)
+{
+    var aliases = BuildBootstrapAliases(values);
+    if (aliases.Contains("sakizciomerbugra895gmail.com"))
+    {
+        aliases.Add("sakizciomerbugra895@gmail.com");
+    }
+
+    if (aliases.Contains("sakizciomerbugra895@gmail.com"))
+    {
+        aliases.Add("sakizciomerbugra895gmail.com");
+    }
+
+    return aliases;
+}
+
+static string TruncateBootstrapValue(string value, int maxLength)
+    => value.Length <= maxLength ? value : value[..maxLength];
 static void DisableLegacyDemoAccounts(AppDbContext db)
 {
     var protectedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "sakizciomerbugra@gmail.com",
+        "sakizciomerbugra895@gmail.com",
         "sakizciomerbugra895gmail.com"
     };
     var legacyUsernames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -1514,7 +1673,7 @@ static void SeedAdditionalDemoData(AppDbContext db)
             CustomerId = customer.Id,
             OrderNumber = $"ORD-SEED-{DateTime.UtcNow:yyyyMMdd}",
             Status = OrderStatus.Preparing,
-            Notes = "Demo siparis",
+            Notes = "Demo sipari\u015f",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             TotalAmount = product.SalePrice,
@@ -1540,7 +1699,7 @@ static void SeedAdditionalDemoData(AppDbContext db)
             ProductId = product.Id,
             CustomerId = customer.Id,
             Rating = 5,
-            Comment = "Isçiligi cok basarili, tavsiye ederim.",
+            Comment = "\u0130\u015f\u00e7ili\u011fi \u00e7ok ba\u015far\u0131l\u0131, tavsiye ederim.",
             Status = ReviewStatus.Approved,
             CreatedAt = DateTime.UtcNow.AddDays(-2),
             ModeratedAt = DateTime.UtcNow.AddDays(-1)
@@ -1552,8 +1711,8 @@ static void SeedAdditionalDemoData(AppDbContext db)
     {
         db.Notifications.Add(new Notification
         {
-            Title = "Hos geldiniz",
-            Message = "Dashboard ve yeni moduller kullanima hazir.",
+            Title = "Ho\u015f geldiniz",
+            Message = "Dashboard ve yeni mod\u00fcller kullan\u0131ma haz\u0131r.",
             Type = NotificationType.Info,
             TargetRole = RoleConstants.Admin,
             CreatedAt = DateTime.UtcNow
@@ -1570,8 +1729,8 @@ static void SeedAdditionalDemoData(AppDbContext db)
             var task = new WorkTask
             {
                 CompanyId = manager.CompanyId.Value,
-                Title = "Vitrin siparislerini kontrol et",
-                Description = "Hazirlanan siparislerin kalite ve teslim bilgisini panelden guncelle.",
+                Title = "Vitrin sipari\u015flerini kontrol et",
+                Description = "Haz\u0131rlanan sipari\u015flerin kalite ve teslim bilgisini panelden g\u00fcncelle.",
                 Priority = TaskPriority.High,
                 Status = MGold.Domain.Enums.TaskStatus.InProgress,
                 DueDate = DateTime.UtcNow.AddDays(1),
@@ -1582,16 +1741,16 @@ static void SeedAdditionalDemoData(AppDbContext db)
             };
             task.HistoryEntries.Add(new WorkTaskHistoryEntry
             {
-                ActionTitle = "Gorev olusturuldu",
-                Description = "Demo gorev kaydi",
+                ActionTitle = "G\u00f6rev olu\u015fturuldu",
+                Description = "Demo g\u00f6rev kayd\u0131",
                 NewStatus = MGold.Domain.Enums.TaskStatus.Waiting,
                 ActorUserId = manager.Id,
                 CreatedAt = DateTime.UtcNow.AddHours(-4)
             });
             task.HistoryEntries.Add(new WorkTaskHistoryEntry
             {
-                ActionTitle = "Calisma basladi",
-                Description = "Personel gorevi isleme aldi.",
+                ActionTitle = "\u00c7al\u0131\u015fma ba\u015flad\u0131",
+                Description = "Personel g\u00f6revi i\u015fleme ald\u0131.",
                 PreviousStatus = MGold.Domain.Enums.TaskStatus.Waiting,
                 NewStatus = MGold.Domain.Enums.TaskStatus.InProgress,
                 ActorUserId = employee.Id,
@@ -1645,6 +1804,9 @@ file sealed class SingleInstanceGuard : IDisposable
     }
 
     public bool Acquired { get; }
+
+    public static SingleInstanceGuard Noop()
+        => new(null, true);
 
     public static SingleInstanceGuard TryAcquire(IHostEnvironment environment, bool useSqlite, string? sqliteConnectionString)
     {

@@ -13,7 +13,7 @@ public class FallbackMarketDataProvider : IMarketDataProvider
             ProviderKey = ProviderKey,
             ProviderDisplayName = "Legacy Mock Provider",
             IsFallback = true,
-            Note = "Mock veri devre disi. Sadece kayitli gercek snapshot kullanilabilir.",
+            Note = "Mock veri devre disi. Sadece kayıtlı gerçek snapshot kullanilabilir.",
             FetchedAt = DateTime.UtcNow,
             Quotes = []
         });

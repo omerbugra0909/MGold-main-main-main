@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using MGold.Application.DTOs;
 using MGold.Application.Exceptions;
 using MGold.Application.Interfaces;
@@ -17,8 +18,10 @@ public class AccountVerificationService(
     IEmailService emailService,
     ISmsService smsService,
     IPasswordHasher<AppUser> passwordHasher,
+    IOptions<EmailSettings> emailOptions,
     ILogger<AccountVerificationService> logger) : IAccountVerificationService
 {
+    private readonly EmailSettings emailSettings = emailOptions.Value;
     private const string PurposeEmailConfirmation = "email_confirmation";
     private const string PurposePhoneConfirmation = "phone_confirmation";
     private const string PurposePasswordReset = "password_reset";
@@ -32,6 +35,7 @@ public class AccountVerificationService(
 
     public async Task SendEmailConfirmationAsync(AppUser user, string baseUrl, string? requestIp, CancellationToken cancellationToken = default)
     {
+        EnsureEmailDeliveryConfigured();
         var token = GenerateSecureToken();
         await CreateTokenAsync(user, PurposeEmailConfirmation, "email", user.Email, token, EmailConfirmationLifetime, requestIp, cancellationToken);
 
@@ -39,12 +43,12 @@ public class AccountVerificationService(
         await emailService.SendAsync(new SendEmailRequestDto
         {
             To = user.Email,
-            Subject = "MGold e-posta dogrulama",
+            Subject = "MGold e-posta doğrulama",
             HtmlBody = $"""
-                <h2>MGold hesabini dogrula</h2>
-                <p>Merhaba {WebUtilityHtmlEncode(user.FullName)}, hesabini aktif kullanabilmek icin e-posta adresini dogrulaman gerekiyor.</p>
+                <h2>MGold hesabıni dogrula</h2>
+                <p>Merhaba {WebUtilityHtmlEncode(user.FullName)}, hesabıni aktif kullanabilmek için e-posta adresini doğrulaman gerekiyor.</p>
                 <p><a href="{verifyUrl}" style="display:inline-block;padding:12px 18px;background:#111827;color:#f8e7b0;text-decoration:none;border-radius:10px;">E-postami Dogrula</a></p>
-                <p>Bu baglanti 24 saat gecerlidir. Bu islemi sen baslatmadiysan bu e-postayi yok sayabilirsin.</p>
+                <p>Bu bağlantı 24 saat geçerlidir. Bu işlemi sen başlatmadıysan bu e-postayi yok sayabilirsin.</p>
             """
         }, cancellationToken);
     }
@@ -74,7 +78,7 @@ public class AccountVerificationService(
         await smsService.SendAsync(new SendSmsRequestDto
         {
             ToPhone = user.Phone,
-            Message = $"MGold telefon dogrulama kodunuz: {code}. Kod {PhoneConfirmationLifetime.TotalMinutes:N0} dakika gecerlidir."
+            Message = $"MGold telefon doğrulama kodunuz: {code}. Kod {PhoneConfirmationLifetime.TotalMinutes:N0} dakika geçerlidir."
         }, cancellationToken);
     }
 
@@ -83,7 +87,7 @@ public class AccountVerificationService(
         var user = await FindUserByIdentifierAsync(dto.Identifier, cancellationToken);
         if (user is null)
         {
-            return new EmailVerificationResultDto { Success = false, Message = "Telefon dogrulama istegi dogrulanamadi." };
+            return new EmailVerificationResultDto { Success = false, Message = "Telefon doğrulama isteği dogrulanamadi." };
         }
 
         var verification = await ValidateTokenAsync(user, PurposePhoneConfirmation, "sms", dto.Code, cancellationToken);
@@ -105,7 +109,7 @@ public class AccountVerificationService(
         var user = await context.AppUsers.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
         if (user is null)
         {
-            return new EmailVerificationResultDto { Success = false, Message = "Dogrulama kaydi bulunamadi." };
+            return new EmailVerificationResultDto { Success = false, Message = "Doğrulama kaydı bulunamadı." };
         }
 
         var verification = await ValidateTokenAsync(user, PurposeEmailConfirmation, "email", token, cancellationToken);
@@ -120,7 +124,7 @@ public class AccountVerificationService(
         user.SecurityStamp = Guid.NewGuid().ToString("N");
         await context.SaveChangesAsync(cancellationToken);
 
-        return new EmailVerificationResultDto { Success = true, Message = "E-posta adresiniz dogrulandi. Artik giris yapabilirsiniz." };
+        return new EmailVerificationResultDto { Success = true, Message = "E-posta adresiniz dogrulandi. Artik giriş yapabilirsiniz." };
     }
 
     public async Task StartPasswordResetAsync(ForgotPasswordRequestDto dto, string baseUrl, string? requestIp, CancellationToken cancellationToken = default)
@@ -140,23 +144,24 @@ public class AccountVerificationService(
             await smsService.SendAsync(new SendSmsRequestDto
             {
                 ToPhone = user.Phone,
-                Message = $"MGold sifre yenileme kodunuz: {code}. Kod {PasswordResetLifetime.TotalMinutes:N0} dakika gecerlidir."
+                Message = $"MGold şifre yenileme kodunuz: {code}. Kod {PasswordResetLifetime.TotalMinutes:N0} dakika geçerlidir."
             }, cancellationToken);
             return;
         }
 
+        EnsureEmailDeliveryConfigured();
         var token = GenerateSecureToken();
         await CreateTokenAsync(user, PurposePasswordReset, "email", user.Email, token, PasswordResetLifetime, requestIp, cancellationToken);
         var resetUrl = $"{baseUrl.TrimEnd('/')}/auth/reset-password?userId={user.Id}&token={Uri.EscapeDataString(token)}&channel=email";
         await emailService.SendAsync(new SendEmailRequestDto
         {
             To = user.Email,
-            Subject = "MGold sifre yenileme",
+            Subject = "MGold şifre yenileme",
             HtmlBody = $"""
-                <h2>Sifre yenileme istegi</h2>
-                <p>Merhaba {WebUtilityHtmlEncode(user.FullName)}, sifreni yenilemek icin asagidaki baglantiyi kullanabilirsin.</p>
-                <p><a href="{resetUrl}" style="display:inline-block;padding:12px 18px;background:#111827;color:#f8e7b0;text-decoration:none;border-radius:10px;">Sifremi Yenile</a></p>
-                <p>Bu baglanti 15 dakika gecerlidir. Bu istegi sen baslatmadiysan hesabin icin herhangi bir islem yapma.</p>
+                <h2>Şifre yenileme isteği</h2>
+                <p>Merhaba {WebUtilityHtmlEncode(user.FullName)}, şifreni yenilemek için aşağıdaki bağlantıyi kullanabilirsin.</p>
+                <p><a href="{resetUrl}" style="display:inline-block;padding:12px 18px;background:#111827;color:#f8e7b0;text-decoration:none;border-radius:10px;">Şifremi Yenile</a></p>
+                <p>Bu bağlantı 15 dakika geçerlidir. Bu isteği sen başlatmadıysan hesabın için herhangi bir işlem yapma.</p>
             """
         }, cancellationToken);
     }
@@ -171,7 +176,7 @@ public class AccountVerificationService(
 
         if (user is null || !user.IsActive || !user.EmailConfirmed)
         {
-            return new EmailVerificationResultDto { Success = false, Message = "Sifre yenileme istegi dogrulanamadi." };
+            return new EmailVerificationResultDto { Success = false, Message = "Şifre yenileme isteği dogrulanamadi." };
         }
 
         var channel = string.Equals(dto.Channel, "sms", StringComparison.OrdinalIgnoreCase) ? "sms" : "email";
@@ -188,7 +193,7 @@ public class AccountVerificationService(
         user.LockoutEndAt = null;
         await context.SaveChangesAsync(cancellationToken);
 
-        return new EmailVerificationResultDto { Success = true, Message = "Sifreniz yenilendi. Yeni sifrenizle giris yapabilirsiniz." };
+        return new EmailVerificationResultDto { Success = true, Message = "Şifreniz yenilendi. Yeni şifrenizle giriş yapabilirsiniz." };
     }
 
     private async Task<AppUser?> FindUserByIdentifierAsync(string identifier, CancellationToken cancellationToken)
@@ -221,7 +226,7 @@ public class AccountVerificationService(
                     cancellationToken);
             if (requestCount >= MaxRequestsPerIpPerHour)
             {
-                throw new BusinessRuleException("Cok fazla dogrulama istegi alindi. Lutfen daha sonra tekrar deneyin.");
+                throw new BusinessRuleException("Çok fazla doğrulama isteği alındı. Lutfen daha sonra tekrar deneyin.");
             }
         }
 
@@ -237,7 +242,7 @@ public class AccountVerificationService(
         if (recentActiveTokens.FirstOrDefault() is { } lastToken
             && now - lastToken.LastSentAt < ResendCooldown)
         {
-            throw new BusinessRuleException("Yeni kod/baglanti gondermeden once kisa bir sure bekleyin.");
+            throw new BusinessRuleException("Yeni kod/baglanti göndermeden önce kısa bir sure bekleyin.");
         }
 
         if (recentActiveTokens.Count >= MaxActiveTokensPerPurpose)
@@ -283,33 +288,33 @@ public class AccountVerificationService(
 
         if (verification is null)
         {
-            return new EmailVerificationResultDto { Success = false, Message = "Dogrulama kodu veya baglantisi bulunamadi." };
+            return new EmailVerificationResultDto { Success = false, Message = "Doğrulama kodu veya bağlantısi bulunamadı." };
         }
 
         if (verification.ExpiresAt <= now)
         {
             verification.ConsumedAt = now;
             await context.SaveChangesAsync(cancellationToken);
-            return new EmailVerificationResultDto { Success = false, Message = "Dogrulama suresi doldu. Yeni kod isteyin." };
+            return new EmailVerificationResultDto { Success = false, Message = "Doğrulama suresi doldu. Yeni kod isteyin." };
         }
 
         if (verification.Attempts >= MaxAttempts)
         {
             verification.ConsumedAt = now;
             await context.SaveChangesAsync(cancellationToken);
-            return new EmailVerificationResultDto { Success = false, Message = "Cok fazla hatali deneme yapildi. Yeni kod isteyin." };
+            return new EmailVerificationResultDto { Success = false, Message = "Çok fazla hatalı deneme yapildi. Yeni kod isteyin." };
         }
 
         if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(verification.TokenHash), Encoding.UTF8.GetBytes(hash)))
         {
             verification.Attempts++;
             await context.SaveChangesAsync(cancellationToken);
-            return new EmailVerificationResultDto { Success = false, Message = "Dogrulama kodu hatali." };
+            return new EmailVerificationResultDto { Success = false, Message = "Doğrulama kodu hatalı." };
         }
 
         verification.ConsumedAt = now;
         await context.SaveChangesAsync(cancellationToken);
-        return new EmailVerificationResultDto { Success = true, Message = "Dogrulama basarili." };
+        return new EmailVerificationResultDto { Success = true, Message = "Doğrulama basarili." };
     }
 
     private static string GenerateSecureToken()
@@ -328,7 +333,7 @@ public class AccountVerificationService(
             || !password.Any(char.IsLower)
             || !password.Any(char.IsDigit))
         {
-            throw new BusinessRuleException("Sifre en az 8 karakter olmali ve buyuk harf, kucuk harf ve rakam icermelidir.");
+            throw new BusinessRuleException("Şifre en az 8 karakter olmalı ve büyük harf, küçük harf ve rakam içermelidir.");
         }
     }
 
@@ -340,4 +345,37 @@ public class AccountVerificationService(
 
     private static string WebUtilityHtmlEncode(string value)
         => System.Net.WebUtility.HtmlEncode(value);
+
+    private void EnsureEmailDeliveryConfigured()
+    {
+        if (!emailSettings.Enabled)
+        {
+            throw new BusinessRuleException("E-posta servisi kapali. Lutfen Email:Enabled ayarini true yapın.");
+        }
+
+        if (string.IsNullOrWhiteSpace(emailSettings.Host)
+            || emailSettings.Port <= 0
+            || string.IsNullOrWhiteSpace(emailSettings.Username)
+            || string.IsNullOrWhiteSpace(ResolveEmailPassword()))
+        {
+            throw new BusinessRuleException("E-posta servisi eksik yapilandirilmis. Gmail app şifresi ve SMTP ayarlarini kontrol edin.");
+        }
+    }
+
+    private string ResolveEmailPassword()
+    {
+        var configured = emailSettings.Password;
+        if (string.IsNullOrWhiteSpace(configured)
+            || configured.Contains("BURAYA", StringComparison.OrdinalIgnoreCase)
+            || configured.Contains("GOOGLE_APP_PASSWORD", StringComparison.OrdinalIgnoreCase))
+        {
+            configured = Environment.GetEnvironmentVariable("MGOLD_EMAIL_PASSWORD")
+                ?? Environment.GetEnvironmentVariable("EMAIL_PASSWORD")
+                ?? string.Empty;
+        }
+
+        return emailSettings.Host.Contains("gmail", StringComparison.OrdinalIgnoreCase)
+            ? configured.Replace(" ", string.Empty, StringComparison.Ordinal)
+            : configured;
+    }
 }

@@ -2,6 +2,67 @@
     --theme-control-height: 46px;
 }
 
+*,
+*::before,
+*::after {
+    min-width: 0;
+}
+
+body {
+    overflow-wrap: anywhere;
+}
+
+button,
+.btn,
+.badge,
+.pill,
+.theme-toggle,
+.portal-entry,
+.nav-link,
+.sidebar a,
+.topbar a,
+.data-table th,
+.data-table td,
+table th,
+table td,
+input,
+select,
+textarea {
+    max-width: 100%;
+}
+
+button,
+.btn,
+.badge,
+.pill {
+    white-space: normal;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+.data-table th,
+.data-table td,
+table th,
+table td,
+.surface,
+.card,
+.dash-card,
+.dash-panel,
+.product-card,
+.company-card,
+.review-card,
+.portal-card,
+.market-card {
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+input,
+select,
+textarea {
+    text-overflow: ellipsis;
+}
+
 :root[data-theme="gold-premium"],
 html:not([data-theme]) {
     color-scheme: dark;

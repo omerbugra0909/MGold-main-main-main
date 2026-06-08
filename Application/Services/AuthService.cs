@@ -107,16 +107,27 @@ public class AuthService(
         var lookup = dto.EmailOrUsername.Trim().ToLowerInvariant();
         AppUser? user = null;
 
-        if (lookup.Contains('@'))
+        var lookupAliases = GetLoginLookupAliases(lookup);
+
+        foreach (var candidate in lookupAliases)
         {
-            user = await appUserRepository.GetByEmailAsync(lookup, cancellationToken)
-                ?? await appUserRepository.GetByUsernameAsync(lookup, cancellationToken);
+            if (candidate.Contains('@'))
+            {
+                user = await appUserRepository.GetByEmailAsync(candidate, cancellationToken)
+                    ?? await appUserRepository.GetByUsernameAsync(candidate, cancellationToken);
+            }
+            else
+            {
+                user = await appUserRepository.GetByUsernameAsync(candidate, cancellationToken)
+                    ?? await appUserRepository.GetByEmailAsync(candidate, cancellationToken);
+            }
+
+            if (user is not null)
+            {
+                break;
+            }
         }
-        else
-        {
-            user = await appUserRepository.GetByUsernameAsync(lookup, cancellationToken)
-                ?? await appUserRepository.GetByEmailAsync(lookup, cancellationToken);
-        }
+
         if (user is null)
         {
             throw new UnauthorizedAccessException("Invalid username or password.");
@@ -124,12 +135,12 @@ public class AuthService(
 
         if (user.LockoutEndAt.HasValue && user.LockoutEndAt.Value > DateTime.UtcNow)
         {
-            throw new UnauthorizedAccessException($"Cok fazla hatali deneme yapildi. Lutfen {user.LockoutEndAt.Value.ToLocalTime():HH:mm} sonrasinda tekrar deneyin.");
+            throw new UnauthorizedAccessException($"Çok fazla hatalı deneme yapildi. Lutfen {user.LockoutEndAt.Value.ToLocalTime():HH:mm} sonrasinda tekrar deneyin.");
         }
 
         if (!user.EmailConfirmed)
         {
-            throw new UnauthorizedAccessException("E-posta adresiniz dogrulanmamis. Lutfen gelen kutunuzu kontrol edin veya dogrulama mailini yeniden isteyin.");
+            throw new UnauthorizedAccessException("E-posta adresiniz dogrulanmamis. Lutfen gelen kutunuzu kontrol edin veya doğrulama mailini yeniden isteyin.");
         }
 
         if (!user.IsActive)
@@ -141,33 +152,33 @@ public class AuthService(
             && !string.Equals(user.Role, Domain.Constants.RoleConstants.SystemAdmin, StringComparison.Ordinal)
             && !string.Equals(user.Role, Domain.Constants.RoleConstants.Manager, StringComparison.Ordinal))
         {
-            throw new UnauthorizedAccessException("Bu giris ekrani sadece sistem admini ve firma yoneticisi hesaplari icindir.");
+            throw new UnauthorizedAccessException("Bu giriş ekrani sadece sistem admini ve firma yöneticisi hesapları içindir.");
         }
 
         if (requireWorkspacePortal
             && !string.Equals(user.Role, Domain.Constants.RoleConstants.Manager, StringComparison.Ordinal)
             && !string.Equals(user.Role, Domain.Constants.RoleConstants.Employee, StringComparison.Ordinal))
         {
-            throw new UnauthorizedAccessException("Bu giris alani yalnizca ic ekip hesaplari icindir.");
+            throw new UnauthorizedAccessException("Bu giriş alanı yalnızca ic ekip hesapları içindir.");
         }
 
         if (user.Role is Domain.Constants.RoleConstants.Manager or Domain.Constants.RoleConstants.Employee)
         {
             if (!user.CompanyId.HasValue)
             {
-                throw new UnauthorizedAccessException("Bu ic ekip hesabina bagli firma bulunamadi.");
+                throw new UnauthorizedAccessException("Bu ic ekip hesabına bağlı firma bulunamadı.");
             }
 
             if (user.Company is not null && !user.Company.IsActive)
             {
-                throw new UnauthorizedAccessException("Bu firmaya ait hesaplar gecici olarak pasiftir.");
+                throw new UnauthorizedAccessException("Bu firmaya ait hesaplar geçici olarak pasiftir.");
             }
         }
 
         if (restrictToCustomerPortal
             && !string.Equals(user.Role, Domain.Constants.RoleConstants.Customer, StringComparison.Ordinal))
         {
-            throw new UnauthorizedAccessException("Musteri giris alani yalnizca musteri hesaplari icindir.");
+            throw new UnauthorizedAccessException("Müşteri giriş alanı yalnızca müşteri hesapları içindir.");
         }
 
         var verification = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
@@ -202,6 +213,16 @@ public class AuthService(
         response.RefreshToken = refreshToken.Token;
         response.RefreshTokenExpiresAtUtc = refreshToken.ExpiresAtUtc;
         return response;
+    }
+
+    private static IReadOnlyList<string> GetLoginLookupAliases(string lookup)
+    {
+        if (string.Equals(lookup, "sakizciomerbugra895gmail.com", StringComparison.OrdinalIgnoreCase))
+        {
+            return new[] { lookup, "sakizciomerbugra895@gmail.com" };
+        }
+
+        return new[] { lookup };
     }
 
     public async Task<IReadOnlyList<UserInfoDto>> GetUsersAsync(CancellationToken cancellationToken = default)
@@ -270,7 +291,7 @@ public class AuthService(
             || !password.Any(char.IsLower)
             || !password.Any(char.IsDigit))
         {
-            throw new BusinessRuleException("Sifre en az 8 karakter olmali ve buyuk harf, kucuk harf ve rakam icermelidir.");
+            throw new BusinessRuleException("Şifre en az 8 karakter olmalı ve büyük harf, küçük harf ve rakam içermelidir.");
         }
     }
 }

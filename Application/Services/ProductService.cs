@@ -122,20 +122,20 @@ public class ProductService(
             companyId = dto.CompanyId;
             if (!companyId.HasValue)
             {
-                throw new AuthorizationException("Sistem admini urun olustururken firma secmelidir.");
+                throw new AuthorizationException("Sistem admini ürün oluştururken firma secmelidir.");
             }
 
             var companyExists = await context.Companies
                 .AnyAsync(x => x.Id == companyId.Value && x.IsActive, cancellationToken);
             if (!companyExists)
             {
-                throw new BusinessRuleException("Secilen firma bulunamadi veya pasif.");
+                throw new BusinessRuleException("Secilen firma bulunamadı veya pasif.");
             }
         }
 
         if (companyId is not int resolvedCompanyId)
         {
-            throw new AuthorizationException("Urun olusturmak icin firma baglami zorunludur.");
+            throw new AuthorizationException("Ürün oluşturmak için firma bağlami zorunludur.");
         }
 
         var product = new Product
@@ -199,7 +199,7 @@ public class ProductService(
         if (await productRepository.HasTransactionsAsync(id, cancellationToken)
             || await context.OrderItems.AnyAsync(x => x.ProductId == id, cancellationToken))
         {
-            throw new BusinessRuleException("Siparis veya islem gecmisi olan urun silinemez.");
+            throw new BusinessRuleException("Sipariş veya işlem geçmişi olan ürün silinemez.");
         }
 
         productRepository.Remove(product);

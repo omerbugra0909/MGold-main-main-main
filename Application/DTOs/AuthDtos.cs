@@ -21,7 +21,7 @@ public class RegisterRequestDto
     [Required]
     [Phone]
     [MaxLength(30)]
-    [RegularExpression(@"^(\+90|90|0)?5\d{9}$", ErrorMessage = "Gecerli bir telefon numarasi giriniz.")]
+    [RegularExpression(@"^(\+90|90|0)?5\d{9}$", ErrorMessage = "Geçerli bir telefon numarasi giriniz.")]
     public string Phone { get; set; } = string.Empty;
 
     [Required]

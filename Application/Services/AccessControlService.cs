@@ -16,7 +16,7 @@ public class AccessControlService(ICurrentUserService currentUserService) : IAcc
             return;
         }
 
-        throw new AuthorizationException("Bu islem icin firma baglamina sahip yetkili erisim gerekiyor.");
+        throw new AuthorizationException("Bu işlem için firma bağlamina sahip yetkili erişim gerekiyor.");
     }
 
     public void EnsureCanWriteOperationalData()
@@ -29,7 +29,7 @@ public class AccessControlService(ICurrentUserService currentUserService) : IAcc
             return;
         }
 
-        throw new AuthorizationException("Bu islem icin firma baglamina sahip yazma yetkisi gerekiyor.");
+        throw new AuthorizationException("Bu işlem için firma bağlamina sahip yazma yetkisi gerekiyor.");
     }
 
     public void EnsureCanDeleteData()
@@ -41,7 +41,7 @@ public class AccessControlService(ICurrentUserService currentUserService) : IAcc
             return;
         }
 
-        throw new AuthorizationException("Silme islemi icin yonetici erisimi gerekiyor.");
+        throw new AuthorizationException("Silme işlemi için yönetici erişimi gerekiyor.");
     }
 
     public void EnsureAdminOnly()
@@ -55,7 +55,7 @@ public class AccessControlService(ICurrentUserService currentUserService) : IAcc
             return;
         }
 
-        throw new AuthorizationException("Bu islem yalnizca sistem adminine aciktir.");
+        throw new AuthorizationException("Bu işlem yalnızca sistem adminine açıktir.");
     }
 
     public void EnsureManagerOrSystemAdmin()
@@ -67,7 +67,7 @@ public class AccessControlService(ICurrentUserService currentUserService) : IAcc
             return;
         }
 
-        throw new AuthorizationException("Bu islem icin firma yoneticisi veya sistem admini olmaniz gerekiyor.");
+        throw new AuthorizationException("Bu işlem için firma yöneticisi veya sistem admini olmaniz gerekiyor.");
     }
 
     public void EnsureEmployeeWorkspaceAccess()
@@ -80,7 +80,7 @@ public class AccessControlService(ICurrentUserService currentUserService) : IAcc
             return;
         }
 
-        throw new AuthorizationException("Bu alan yalnizca ic ekip kullanicilarina aciktir.");
+        throw new AuthorizationException("Bu alan yalnızca ic ekip kullanıcılarina açıktir.");
     }
 
     public void EnsureSameCompany(int? companyId)
@@ -92,7 +92,7 @@ public class AccessControlService(ICurrentUserService currentUserService) : IAcc
 
         if (!currentUserService.CompanyId.HasValue || !companyId.HasValue || currentUserService.CompanyId != companyId)
         {
-            throw new AuthorizationException("Bu kayda farkli bir firma baglamindan erisilemez.");
+            throw new AuthorizationException("Bu kayda farkli bir firma bağlamindan erisilemez.");
         }
     }
 

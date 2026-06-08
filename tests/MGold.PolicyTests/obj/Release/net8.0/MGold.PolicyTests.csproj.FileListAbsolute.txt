@@ -1,5 +1,6 @@
 C:\Users\Ömer\Desktop\MGold-main-main-main\tests\MGold.PolicyTests\bin\Release\net8.0\MGold.deps.json
 C:\Users\Ömer\Desktop\MGold-main-main-main\tests\MGold.PolicyTests\bin\Release\net8.0\MGold.runtimeconfig.json
+C:\Users\Ömer\Desktop\MGold-main-main-main\tests\MGold.PolicyTests\bin\Release\net8.0\web.config
 C:\Users\Ömer\Desktop\MGold-main-main-main\tests\MGold.PolicyTests\bin\Release\net8.0\appsettings.Development.json
 C:\Users\Ömer\Desktop\MGold-main-main-main\tests\MGold.PolicyTests\bin\Release\net8.0\appsettings.json
 C:\Users\Ömer\Desktop\MGold-main-main-main\tests\MGold.PolicyTests\bin\Release\net8.0\dotnet-tools.json
@@ -21,4 +22,3 @@ C:\Users\Ömer\Desktop\MGold-main-main-main\tests\MGold.PolicyTests\obj\Release\
 C:\Users\Ömer\Desktop\MGold-main-main-main\tests\MGold.PolicyTests\obj\Release\net8.0\refint\MGold.PolicyTests.dll
 C:\Users\Ömer\Desktop\MGold-main-main-main\tests\MGold.PolicyTests\obj\Release\net8.0\MGold.PolicyTests.pdb
 C:\Users\Ömer\Desktop\MGold-main-main-main\tests\MGold.PolicyTests\obj\Release\net8.0\ref\MGold.PolicyTests.dll
-C:\Users\Ömer\Desktop\MGold-main-main-main\tests\MGold.PolicyTests\bin\Release\net8.0\web.config

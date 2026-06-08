@@ -121,7 +121,7 @@ public class CustomerPortalController(
 
         if (user.CompanyId.HasValue && product.CompanyId != user.CompanyId)
         {
-            return ApiResponseFactory.CreateFailure(this, "Forbidden.", StatusCodes.Status403Forbidden, "Bu urune erisim yetkiniz yok.");
+            return ApiResponseFactory.CreateFailure(this, "Forbidden.", StatusCodes.Status403Forbidden, "Bu ürüne erişim yetkiniz yok.");
         }
 
         var favorite = await context.CustomerFavorites
@@ -318,6 +318,6 @@ public class CustomerPortalController(
             TotalAmount = order.TotalAmount,
             PaidAmount = order.PaidAmount,
             CreatedAt = order.CreatedAt,
-            Items = order.Items.Select(i => $"{i.Product?.Name ?? $"Urun #{i.ProductId}"} x{i.Quantity}").ToList()
+            Items = order.Items.Select(i => $"{i.Product?.Name ?? $"Ürün #{i.ProductId}"} x{i.Quantity}").ToList()
         };
 }

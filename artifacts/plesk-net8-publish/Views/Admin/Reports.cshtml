@@ -1,0 +1,228 @@
+@using MGold.Application.DTOs
+@model MGold.Controllers.AdminReportsPageViewModel
+@{
+    ViewData["Title"] = "Raporlama";
+    ViewData["PageDescription"] = "Ürün, sipariş, müşteri, görev, bildirim, yorum, stok, satış ve sistem istatistiklerini tablo halinde izleyin.";
+    var report = Model.OperationalReport;
+    var isSystemAdmin = User.IsInRole("SystemAdmin");
+    var panelBase = isSystemAdmin ? "/admin" : "/owner";
+    var routeValues = new
+    {
+        rangePreset = report.RangePreset,
+        startDate = Model.StartDate?.ToString("yyyy-MM-dd"),
+        endDate = Model.EndDate?.ToString("yyyy-MM-dd")
+    };
+    var presets = new[]
+    {
+        new { Value = DashboardRangePresets.Daily, Label = "Günlük" },
+        new { Value = DashboardRangePresets.Weekly, Label = "Haftalık" },
+        new { Value = DashboardRangePresets.Monthly, Label = "Aylık" },
+        new { Value = DashboardRangePresets.Yearly, Label = "Yıllık" }
+    };
+}
+
+<section class="surface report-hero">
+    <div>
+        <span class="badge">Raporlama</span>
+        <h2>Operasyon Raporları</h2>
+        <p class="text-muted">
+            @report.ScopeTitle için @report.StartDate.ToLocalTime().ToString("dd.MM.yyyy") -
+            @report.EndDate.ToLocalTime().ToString("dd.MM.yyyy") aralığındaki güncel durum.
+        </p>
+    </div>
+    <div class="report-actions">
+        <a class="btn btn-secondary"
+           href="@($"{panelBase}/reports/pdf?rangePreset={report.RangePreset}&startDate={Model.StartDate?.ToString("yyyy-MM-dd")}&endDate={Model.EndDate?.ToString("yyyy-MM-dd")}")">
+            PDF İndir
+        </a>
+        <a class="btn btn-primary"
+           href="@($"{panelBase}/reports/pdf?archive=true&rangePreset={report.RangePreset}&startDate={Model.StartDate?.ToString("yyyy-MM-dd")}&endDate={Model.EndDate?.ToString("yyyy-MM-dd")}")">
+            PDF İndir ve Arşivle
+        </a>
+    </div>
+</section>
+
+<section class="surface report-filter">
+    <form method="get" class="report-filter-form">
+        <label>
+            Dönem
+            <select name="rangePreset">
+                @foreach (var preset in presets)
+                {
+                    <option value="@preset.Value" selected="@(report.RangePreset == preset.Value)">@preset.Label</option>
+                }
+            </select>
+        </label>
+        <label>
+            Başlangıç
+            <input type="date" name="startDate" value="@Model.StartDate?.ToString("yyyy-MM-dd")" />
+        </label>
+        <label>
+            Bitiş
+            <input type="date" name="endDate" value="@Model.EndDate?.ToString("yyyy-MM-dd")" />
+        </label>
+        <div class="report-filter-buttons">
+            <button type="submit" class="btn btn-primary">Filtrele</button>
+            <a class="btn btn-secondary" href="@($"{panelBase}/reports")">Temizle</a>
+        </div>
+    </form>
+</section>
+
+<section class="metric-grid report-metrics">
+    @foreach (var metric in report.Metrics)
+    {
+        <article class="surface metric-card">
+            <span>@metric.Label</span>
+            <strong>@metric.Value</strong>
+            <small class="text-muted">@metric.Detail</small>
+        </article>
+    }
+</section>
+
+<section class="surface report-archive">
+    <div class="section-head">
+        <div>
+            <span class="badge">Arşiv</span>
+            <h3>Oluşturulan PDF Raporları</h3>
+            <p class="text-muted">Arşivlenen raporlar rol ve firma kapsamına göre ayrılır.</p>
+        </div>
+    </div>
+    @if (!Model.Archive.Any())
+    {
+        <div class="empty-state">Henüz arşivlenmiş rapor bulunmuyor.</div>
+    }
+    else
+    {
+        <div class="data-table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Rapor</th>
+                        <th>Tarih</th>
+                        <th>Boyut</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Archive)
+                    {
+                        <tr>
+                            <td>@item.Title</td>
+                            <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@((item.SizeBytes / 1024m).ToString("N1")) KB</td>
+                            <td>
+                                <a class="btn btn-secondary" href="@($"{panelBase}/reports/archive/{Uri.EscapeDataString(item.FileName)}")">İndir</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@foreach (var table in report.Tables)
+{
+    <section class="surface report-table-section">
+        <div class="section-head">
+            <div>
+                <span class="badge">@table.Key</span>
+                <h3>@table.Title</h3>
+                <p class="text-muted">@table.Description</p>
+            </div>
+        </div>
+        @if (!table.Rows.Any())
+        {
+            <div class="empty-state">Bu bölüm için kayıt bulunamadı.</div>
+        }
+        else
+        {
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            @foreach (var column in table.Columns)
+                            {
+                                <th>@column</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in table.Rows)
+                        {
+                            <tr>
+                                @foreach (var cell in row)
+                                {
+                                    <td>@cell</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+<style>
+    .report-hero,
+    .report-filter,
+    .report-archive,
+    .report-table-section {
+        padding: 22px;
+        margin-bottom: 18px;
+    }
+
+    .report-hero {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+    }
+
+    .report-actions,
+    .report-filter-buttons {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .report-filter-form {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+        gap: 14px;
+        align-items: end;
+    }
+
+    .report-metrics {
+        margin: 18px 0;
+    }
+
+    .metric-card small {
+        display: block;
+        margin-top: 6px;
+        font-size: 12px;
+    }
+
+    .report-table-section .data-table td,
+    .report-table-section .data-table th {
+        white-space: nowrap;
+    }
+
+    @@media (max-width: 900px) {
+        .report-hero {
+            display: grid;
+        }
+
+        .report-filter-form {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media print {
+        .admin-sidebar, .admin-topbar, .btn, .report-filter, .report-archive { display: none !important; }
+        body { background: #fff !important; color: #111 !important; }
+        .surface, .metric-card { box-shadow: none !important; border: 1px solid #ddd !important; color: #111 !important; }
+    }
+</style>

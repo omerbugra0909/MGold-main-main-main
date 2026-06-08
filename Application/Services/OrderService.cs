@@ -103,7 +103,7 @@ public class OrderService(
 
             if (item.Quantity > product.StockQuantity)
             {
-                throw new BusinessRuleException($"{product.Name} icin yeterli stok yok.");
+                throw new BusinessRuleException($"{product.Name} için yeterli stok yok.");
             }
 
             var unitPrice = item.UnitPriceOverride.GetValueOrDefault(product.SalePrice);
@@ -127,14 +127,14 @@ public class OrderService(
         await orderHistoryService.RecordAsync(
             order.Id,
             OrderHistoryType.OrderCreated,
-            "Siparis olusturuldu",
-            $"{order.OrderNumber} numarali siparis {customer.Name} icin olusturuldu.",
+            "Sipariş oluşturuldu",
+            $"{order.OrderNumber} numaralı sipariş {customer.Name} için oluşturuldu.",
             cancellationToken: cancellationToken);
 
         await CreateOrderNotificationAsync(
             order,
-            "Yeni siparis olusturuldu",
-            $"{order.OrderNumber} numarali siparis {customer.Name} icin olusturuldu.",
+            "Yeni sipariş oluşturuldu",
+            $"{order.OrderNumber} numaralı sipariş {customer.Name} için oluşturuldu.",
             NotificationType.NewOrder,
             cancellationToken);
 
@@ -148,15 +148,15 @@ public class OrderService(
                 await emailService.SendAsync(new SendEmailRequestDto
                 {
                     To = customer.Email,
-                    Subject = $"Siparisiniz alindi: {order.OrderNumber}",
-                    HtmlBody = $"<p>Merhaba {System.Net.WebUtility.HtmlEncode(customer.Name)},</p><p>{order.OrderNumber} numarali siparisiniz olusturuldu.</p><p>Toplam tutar: <strong>{order.TotalAmount:N2}</strong></p>"
+                    Subject = $"Siparişiniz alındı: {order.OrderNumber}",
+                    HtmlBody = $"<p>Merhaba {System.Net.WebUtility.HtmlEncode(customer.Name)},</p><p>{order.OrderNumber} numaralı siparişiniz oluşturuldu.</p><p>Toplam tutar: <strong>{order.TotalAmount:N2}</strong></p>"
                 }, cancellationToken);
 
                 await orderHistoryService.RecordAsync(
                     order.Id,
                     OrderHistoryType.EmailSent,
-                    "Siparis e-postasi gonderildi",
-                    $"{customer.Email} adresine siparis olusturma bilgilendirmesi gonderildi.",
+                    "Sipariş e-postasi gönderildi",
+                    $"{customer.Email} adresine sipariş oluşturma bilgilendirmesi gönderildi.",
                     cancellationToken: cancellationToken);
             }
             catch (Exception ex)
@@ -170,14 +170,14 @@ public class OrderService(
             await smsService.SendAsync(new SendSmsRequestDto
             {
                 ToPhone = customer.Phone,
-                Message = $"{order.OrderNumber} numarali siparisiniz alindi. Tutar: {order.TotalAmount:N2} TL"
+                Message = $"{order.OrderNumber} numaralı siparişiniz alındı. Tutar: {order.TotalAmount:N2} TL"
             }, cancellationToken);
 
             await orderHistoryService.RecordAsync(
                 order.Id,
                 OrderHistoryType.SmsSent,
-                "Siparis SMS'i gonderildi",
-                $"{customer.Phone} numarasina siparis bilgilendirme SMS'i gonderildi.",
+                "Sipariş SMS'i gönderildi",
+                $"{customer.Phone} numarasina sipariş bilgilendirme SMS'i gönderildi.",
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)
@@ -200,12 +200,12 @@ public class OrderService(
 
         if (!OrderPolicy.IsAllowedStatusTransition(order.Status, dto.Status))
         {
-            throw new BusinessRuleException($"{order.Status} durumundan {dto.Status} durumuna gecilemez.");
+            throw new BusinessRuleException($"{order.Status} durumundan {dto.Status} durumuna geçilemez.");
         }
 
         if (dto.Status == OrderStatus.Completed && order.PaymentStatus != PaymentStatus.Paid)
         {
-            throw new BusinessRuleException("Siparis tamamlanmadan once odeme tam olarak tahsil edilmelidir.");
+            throw new BusinessRuleException("Sipariş tamamlanmadan önce ödeme tam olarak tahsil edilmelidir.");
         }
 
         var previousStatus = order.Status;
@@ -232,14 +232,14 @@ public class OrderService(
         await orderHistoryService.RecordAsync(
             order.Id,
             OrderHistoryType.StatusChanged,
-            "Siparis durumu guncellendi",
-            $"{previousStatus} durumundan {order.Status} durumuna gecildi.",
+            "Sipariş durumu güncellendi",
+            $"{previousStatus} durumundan {order.Status} durumuna geçildi.",
             cancellationToken: cancellationToken);
 
         await CreateOrderNotificationAsync(
             order,
-            "Siparis durumu guncellendi",
-            $"{order.OrderNumber} numarali siparis durumu {order.Status} oldu.",
+            "Sipariş durumu güncellendi",
+            $"{order.OrderNumber} numaralı sipariş durumu {order.Status} oldu.",
             dto.Status == OrderStatus.Cancelled ? NotificationType.Warning : NotificationType.Info,
             cancellationToken,
             dto.Status == OrderStatus.Cancelled);
@@ -258,15 +258,15 @@ public class OrderService(
                 await emailService.SendAsync(new SendEmailRequestDto
                 {
                     To = order.Customer.Email,
-                    Subject = $"Siparis durumu guncellendi: {order.OrderNumber}",
-                    HtmlBody = $"<p>Merhaba {System.Net.WebUtility.HtmlEncode(order.Customer.Name)},</p><p>{order.OrderNumber} numarali siparisinizin yeni durumu: <strong>{order.Status}</strong></p>"
+                    Subject = $"Sipariş durumu güncellendi: {order.OrderNumber}",
+                    HtmlBody = $"<p>Merhaba {System.Net.WebUtility.HtmlEncode(order.Customer.Name)},</p><p>{order.OrderNumber} numaralı siparişinizin yeni durumu: <strong>{order.Status}</strong></p>"
                 }, cancellationToken);
 
                 await orderHistoryService.RecordAsync(
                     order.Id,
                     OrderHistoryType.EmailSent,
-                    "Durum e-postasi gonderildi",
-                    $"{order.Customer.Email} adresine yeni siparis durumu bilgisi gonderildi.",
+                    "Durum e-postasi gönderildi",
+                    $"{order.Customer.Email} adresine yeni sipariş durumu bilgisi gönderildi.",
                     cancellationToken: cancellationToken);
             }
             catch (Exception ex)
@@ -280,14 +280,14 @@ public class OrderService(
             await smsService.SendAsync(new SendSmsRequestDto
             {
                 ToPhone = order.Customer.Phone,
-                Message = $"{order.OrderNumber} siparis durumunuz: {order.Status}"
+                Message = $"{order.OrderNumber} sipariş durumunuz: {order.Status}"
             }, cancellationToken);
 
             await orderHistoryService.RecordAsync(
                 order.Id,
                 OrderHistoryType.SmsSent,
-                "Durum SMS'i gonderildi",
-                $"{order.Customer.Phone} numarasina yeni siparis durumu bilgisi gonderildi.",
+                "Durum SMS'i gönderildi",
+                $"{order.Customer.Phone} numarasina yeni sipariş durumu bilgisi gönderildi.",
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)
@@ -317,7 +317,7 @@ public class OrderService(
         if (!string.IsNullOrWhiteSpace(dto.IdempotencyKey)
             && order.Payments.Any(x => x.IdempotencyKey == dto.IdempotencyKey.Trim()))
         {
-            throw new BusinessRuleException("Bu odeme istegi daha once islenmis.");
+            throw new BusinessRuleException("Bu ödeme isteği daha önce islenmis.");
         }
 
         if (!string.IsNullOrWhiteSpace(dto.ProviderTransactionId)
@@ -325,7 +325,7 @@ public class OrderService(
                 string.Equals(x.ProviderKey, OrderPolicy.NormalizeProviderKey(dto.ProviderKey), StringComparison.OrdinalIgnoreCase)
                 && x.ProviderTransactionId == dto.ProviderTransactionId.Trim()))
         {
-            throw new BusinessRuleException("Bu saglayici islem referansi daha once kaydedilmis.");
+            throw new BusinessRuleException("Bu saglayici işlem referansi daha önce kaydedilmis.");
         }
 
         OrderPolicy.ValidateRefundParent(dto, order);
@@ -335,12 +335,12 @@ public class OrderService(
         {
             if (currentPaidAmount + dto.Amount > order.TotalAmount)
             {
-                throw new BusinessRuleException("Odeme tutari siparis toplam tutarini asamaz.");
+                throw new BusinessRuleException("Ödeme tutari sipariş toplam tutarini aşamaz.");
             }
         }
         else if (dto.Status is PaymentStatus.Refunded or PaymentStatus.PartiallyRefunded or PaymentStatus.RefundPending && dto.Amount > currentPaidAmount)
         {
-            throw new BusinessRuleException("Iade tutari odenmis tutari asamaz.");
+            throw new BusinessRuleException("İade tutari odenmis tutari aşamaz.");
         }
 
         var payment = new OrderPayment
@@ -380,22 +380,22 @@ public class OrderService(
         }
         catch (DbUpdateException ex) when (IsUniqueConstraintFailure(ex))
         {
-            throw new BusinessRuleException("Bu odeme referansi veya idempotency anahtari daha once islenmis.");
+            throw new BusinessRuleException("Bu ödeme referansi veya idempotency anahtari daha önce islenmis.");
         }
 
         await orderHistoryService.RecordAsync(
             order.Id,
             OrderHistoryType.PaymentRecorded,
-            "Odeme kaydi eklendi",
-            $"{dto.Amount:N2} TL tutarinda {dto.Method} odemesi {dto.Status} durumuyla kaydedildi.",
+            "Ödeme kaydı eklendi",
+            $"{dto.Amount:N2} TL tutarında {dto.Method} ödemesi {dto.Status} durumuyla kaydedildi.",
             nameof(OrderPayment),
             payment.Id.ToString(),
             cancellationToken: cancellationToken);
 
         await CreateOrderNotificationAsync(
             order,
-            "Odeme kaydi eklendi",
-            $"{order.OrderNumber} icin {dto.Amount:N2} TL tutarinda {dto.Method} odeme kaydi olusturuldu.",
+            "Ödeme kaydı eklendi",
+            $"{order.OrderNumber} için {dto.Amount:N2} TL tutarında {dto.Method} ödeme kaydı oluşturuldu.",
             NotificationType.Info,
             cancellationToken);
 
@@ -471,45 +471,45 @@ public class OrderService(
 
         if (dto.InstallmentCount < 1 || dto.InstallmentCount > 36)
         {
-            throw new BusinessRuleException("Taksit sayisi 1 ile 36 arasinda olmalidir.");
+            throw new BusinessRuleException("Taksit sayisi 1 ile 36 arasinda olmalıdir.");
         }
 
         if (dto.Method is PaymentMethod.Card or PaymentMethod.CreditCard or PaymentMethod.DebitCard
             && dto.Status is PaymentStatus.Paid or PaymentStatus.PartiallyPaid
             && string.IsNullOrWhiteSpace(dto.ReferenceNumber))
         {
-            throw new BusinessRuleException("Kart odemelerinde provizyon veya islem referansi girilmelidir.");
+            throw new BusinessRuleException("Kart ödemelerinde provizyon veya işlem referansi girilmelidir.");
         }
 
         if (dto.Method == PaymentMethod.DebitCard && dto.InstallmentCount > 1)
         {
-            throw new BusinessRuleException("Banka karti odemelerinde taksit kullanilamaz.");
+            throw new BusinessRuleException("Banka kartı ödemelerinde taksit kullanılamaz.");
         }
 
         if (dto.Status == PaymentStatus.Failed
             && string.IsNullOrWhiteSpace(dto.FailureCode)
             && string.IsNullOrWhiteSpace(dto.FailureMessage))
         {
-            throw new BusinessRuleException("Basarisiz odeme kayitlarinda hata kodu veya mesaji bulunmalidir.");
+            throw new BusinessRuleException("Basarisiz ödeme kayıtlarinda hata kodu veya mesaji bulunmalidir.");
         }
 
         var providerKey = NormalizeProviderKey(dto.ProviderKey);
         var isProviderPayment = providerKey != ManualPaymentProvider.Key;
         if (isProviderPayment && string.IsNullOrWhiteSpace(dto.IdempotencyKey))
         {
-            throw new BusinessRuleException("Saglayici odemelerinde idempotency anahtari zorunludur.");
+            throw new BusinessRuleException("Saglayici ödemelerinde idempotency anahtari zorunludur.");
         }
 
         if (isProviderPayment
             && dto.Status is PaymentStatus.Paid or PaymentStatus.PartiallyPaid or PaymentStatus.Authorized
             && string.IsNullOrWhiteSpace(dto.ProviderTransactionId))
         {
-            throw new BusinessRuleException("Saglayici odemelerinde provider transaction id zorunludur.");
+            throw new BusinessRuleException("Saglayici ödemelerinde provider transaction id zorunludur.");
         }
 
         if (dto.IsRefund && !dto.ParentPaymentId.HasValue)
         {
-            throw new BusinessRuleException("Iade kayitlarinda ana odeme secilmelidir.");
+            throw new BusinessRuleException("İade kayıtlarinda ana ödeme secilmelidir.");
         }
     }
 
@@ -523,18 +523,18 @@ public class OrderService(
 
         if (!dto.ParentPaymentId.HasValue)
         {
-            throw new BusinessRuleException("Iade kayitlarinda ana odeme secilmelidir.");
+            throw new BusinessRuleException("İade kayıtlarinda ana ödeme secilmelidir.");
         }
 
         var parent = order.Payments.FirstOrDefault(x => x.Id == dto.ParentPaymentId.Value);
         if (parent is null)
         {
-            throw new BusinessRuleException("Iade edilecek ana odeme bu siparise ait degil.");
+            throw new BusinessRuleException("İade edilecek ana ödeme bu siparişe ait değil.");
         }
 
         if (parent.Status is not (PaymentStatus.Paid or PaymentStatus.PartiallyPaid))
         {
-            throw new BusinessRuleException("Yalnizca tahsil edilmis odemeler iade edilebilir.");
+            throw new BusinessRuleException("Yalnızca tahsil edilmis ödemeler iade edilebilir.");
         }
 
         var alreadyRefunded = order.Payments
@@ -542,7 +542,7 @@ public class OrderService(
             .Sum(x => x.Amount);
         if (alreadyRefunded + dto.Amount > parent.Amount)
         {
-            throw new BusinessRuleException("Iade tutari ana odemenin kalan tutarini asamaz.");
+            throw new BusinessRuleException("İade tutari ana ödemenin kalan tutarini aşamaz.");
         }
     }
 
@@ -576,8 +576,8 @@ public class OrderService(
         await orderHistoryService.RecordAsync(
             order.Id,
             OrderHistoryType.NotificationSent,
-            "Sistem bildirimi olusturuldu",
-            $"{notification.Title} bildirimi role dayali akisa eklendi.",
+            "Sistem bildirimi oluşturuldu",
+            $"{notification.Title} bildirimi role dayali akışa eklendi.",
             nameof(Domain.Entities.Notification),
             notification.Id.ToString(),
             cancellationToken: cancellationToken);

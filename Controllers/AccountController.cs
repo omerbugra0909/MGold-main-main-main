@@ -13,7 +13,8 @@ namespace MGold.Controllers;
 
 public class AccountController(
     IAuthService authService,
-    IAccountVerificationService accountVerificationService) : Controller
+    IAccountVerificationService accountVerificationService,
+    IConfiguration configuration) : Controller
 {
     [AllowAnonymous]
     [HttpGet("/auth")]
@@ -108,8 +109,16 @@ public class AccountController(
                 Role = RoleConstants.Customer
             }, cancellationToken);
 
-            await accountVerificationService.SendEmailConfirmationAsync(auth.Email, GetBaseUrl(), GetRequestIp(), cancellationToken);
-            TempData["Success"] = "Hesabiniz olusturuldu. Gonderdigimiz e-posta dogrulama baglantisini acarak hesabinizi aktiflestirin.";
+            try
+            {
+                await accountVerificationService.SendEmailConfirmationAsync(auth.Email, GetBaseUrl(), GetRequestIp(), cancellationToken);
+                TempData["Success"] = "Hesabiniz oluşturuldu. Gönderdigimiz e-posta doğrulama bağlantısini açarak hesabınızı aktiflestirin.";
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Hesabiniz oluşturuldu fakat doğrulama e-postasi gönderilemedi: {ex.Message}";
+            }
+
             return RedirectToAction(nameof(VerifyPending), new { email = auth.Email });
         }
         catch (Exception ex)
@@ -142,7 +151,7 @@ public class AccountController(
             }, cancellationToken);
 
             await SignInAsync(auth);
-            TempData["Success"] = "Yonetim paneli oturumu acildi.";
+            TempData["Success"] = "Yönetim paneli oturumu acildi.";
             return Redirect(auth.RedirectUrl);
         }
         catch (Exception ex)
@@ -174,7 +183,7 @@ public class AccountController(
             }, cancellationToken);
 
             await SignInAsync(auth);
-            TempData["Success"] = "Calisma alani oturumu acildi.";
+            TempData["Success"] = "Çalışma alanı oturumu acildi.";
             return Redirect(auth.RedirectUrl);
         }
         catch (Exception ex)
@@ -214,7 +223,7 @@ public class AccountController(
         try
         {
             await accountVerificationService.SendEmailConfirmationAsync(form.EmailOrUsername, GetBaseUrl(), GetRequestIp(), cancellationToken);
-            TempData["Success"] = "Dogrulama e-postasi tekrar gonderildi.";
+            TempData["Success"] = "Doğrulama e-postasi tekrar gönderildi.";
         }
         catch (Exception ex)
         {
@@ -233,7 +242,7 @@ public class AccountController(
         try
         {
             await accountVerificationService.SendPhoneConfirmationAsync(form.EmailOrUsername, GetRequestIp(), cancellationToken);
-            TempData["Success"] = "Telefon dogrulama kodu gonderildi.";
+            TempData["Success"] = "Telefon doğrulama kodu gönderildi.";
         }
         catch (Exception ex)
         {
@@ -251,7 +260,7 @@ public class AccountController(
     {
         if (string.IsNullOrWhiteSpace(form.PhoneCode))
         {
-            TempData["Error"] = "Telefon dogrulama kodu zorunludur.";
+            TempData["Error"] = "Telefon doğrulama kodu zorunludur.";
             return RedirectToAction(nameof(VerifyPending), new { email = form.EmailOrUsername });
         }
 
@@ -289,14 +298,22 @@ public class AccountController(
             return View(form);
         }
 
-        await accountVerificationService.StartPasswordResetAsync(new ForgotPasswordRequestDto
+        try
         {
-            Identifier = form.Identifier,
-            Channel = form.Channel
-        }, GetBaseUrl(), GetRequestIp(), cancellationToken);
+            await accountVerificationService.StartPasswordResetAsync(new ForgotPasswordRequestDto
+            {
+                Identifier = form.Identifier,
+                Channel = form.Channel
+            }, GetBaseUrl(), GetRequestIp(), cancellationToken);
 
-        TempData["Success"] = "Bilgiler eslesiyorsa sifre yenileme kodu/baglantisi gonderildi.";
-        return RedirectToAction(nameof(ResetPassword), new { identifier = form.Identifier, channel = form.Channel });
+            TempData["Success"] = "Bilgiler eslesiyorsa şifre yenileme kodu/baglantisi gönderildi.";
+            return RedirectToAction(nameof(ResetPassword), new { identifier = form.Identifier, channel = form.Channel });
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(form);
+        }
     }
 
     [AllowAnonymous]
@@ -369,7 +386,17 @@ public class AccountController(
     }
 
     private string GetBaseUrl()
-        => $"{Request.Scheme}://{Request.Host}";
+    {
+        var configuredBaseUrl = configuration["App:BaseUrl"];
+        if (!string.IsNullOrWhiteSpace(configuredBaseUrl))
+        {
+            return configuredBaseUrl.TrimEnd('/');
+        }
+
+        var forwardedProto = Request.Headers["X-Forwarded-Proto"].FirstOrDefault();
+        var scheme = string.IsNullOrWhiteSpace(forwardedProto) ? Request.Scheme : forwardedProto;
+        return $"{scheme}://{Request.Host}";
+    }
 
     private string? GetRequestIp()
         => HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -378,18 +405,18 @@ public class AccountController(
 
 public class UserLoginViewModel
 {
-    [Required(ErrorMessage = "E-posta veya kullanici adi zorunludur.")]
+    [Required(ErrorMessage = "E-posta veya kullanıcı adi zorunludur.")]
     [MaxLength(150)]
     public string EmailOrUsername { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Sifre zorunludur.")]
+    [Required(ErrorMessage = "Şifre zorunludur.")]
     [MaxLength(64)]
     public string Password { get; set; } = string.Empty;
 }
 
 public class UserRegisterViewModel
 {
-    [Required(ErrorMessage = "Kullanici adi zorunludur.")]
+    [Required(ErrorMessage = "Kullanıcı adi zorunludur.")]
     [MaxLength(80)]
     public string Username { get; set; } = string.Empty;
 
@@ -398,28 +425,28 @@ public class UserRegisterViewModel
     public string FullName { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "E-posta zorunludur.")]
-    [EmailAddress(ErrorMessage = "Gecerli bir e-posta giriniz.")]
+    [EmailAddress(ErrorMessage = "Geçerli bir e-posta giriniz.")]
     [MaxLength(150)]
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Telefon numarasi zorunludur.")]
-    [RegularExpression(@"^(\+90|90|0)?5\d{9}$", ErrorMessage = "Gecerli bir telefon numarasi giriniz.")]
+    [RegularExpression(@"^(\+90|90|0)?5\d{9}$", ErrorMessage = "Geçerli bir telefon numarasi giriniz.")]
     [MaxLength(30)]
     public string Phone { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Sifre zorunludur.")]
-    [MinLength(8, ErrorMessage = "Sifre en az 8 karakter olmalidir.")]
+    [Required(ErrorMessage = "Şifre zorunludur.")]
+    [MinLength(8, ErrorMessage = "Şifre en az 8 karakter olmalıdir.")]
     [MaxLength(64)]
     public string Password { get; set; } = string.Empty;
 }
 
 public class AdminLoginViewModel
 {
-    [Required(ErrorMessage = "Admin kullanici adi zorunludur.")]
+    [Required(ErrorMessage = "Admin kullanıcı adi zorunludur.")]
     [MaxLength(80)]
     public string Username { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Sifre zorunludur.")]
+    [Required(ErrorMessage = "Şifre zorunludur.")]
     [MaxLength(64)]
     public string Password { get; set; } = string.Empty;
 }
@@ -428,7 +455,7 @@ public class VerifyPendingViewModel
 {
     public string Email { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "E-posta veya kullanici adi zorunludur.")]
+    [Required(ErrorMessage = "E-posta veya kullanıcı adi zorunludur.")]
     [MaxLength(150)]
     public string EmailOrUsername { get; set; } = string.Empty;
 
@@ -438,7 +465,7 @@ public class VerifyPendingViewModel
 
 public class ForgotPasswordViewModel
 {
-    [Required(ErrorMessage = "E-posta, telefon veya kullanici adi zorunludur.")]
+    [Required(ErrorMessage = "E-posta, telefon veya kullanıcı adi zorunludur.")]
     [MaxLength(150)]
     public string Identifier { get; set; } = string.Empty;
 
@@ -462,8 +489,8 @@ public class ResetPasswordViewModel
     [RegularExpression("^(email|sms)$")]
     public string Channel { get; set; } = "email";
 
-    [Required(ErrorMessage = "Yeni sifre zorunludur.")]
-    [MinLength(8, ErrorMessage = "Sifre en az 8 karakter olmalidir.")]
+    [Required(ErrorMessage = "Yeni şifre zorunludur.")]
+    [MinLength(8, ErrorMessage = "Şifre en az 8 karakter olmalıdir.")]
     [MaxLength(64)]
     public string NewPassword { get; set; } = string.Empty;
 }
